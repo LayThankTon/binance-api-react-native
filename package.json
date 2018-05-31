@@ -1,6 +1,6 @@
 {
   "name": "binance-api-react-native",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A react native API wrapper for Binance",
   "main": "dist",
   "scripts": {
@@ -38,6 +38,21 @@
     "require": ["babel-register", "babel-polyfill"],
     "files": ["test/index.js"],
     "babel": "inherit"
+  },
+  "babel": {
+    "presets": [
+      [
+        "env",
+        {
+          "targets": {
+            "browsers": ["last 2 versions"],
+            "node": "current"
+          }
+        }
+      ],
+      "stage-0"
+    ],
+    "plugins": [["module-resolver", { "root": ["src"] }]]
   },
   "author": "Balthazar Gronon <bgronon@gmail.com>",
   "license": "MIT"
