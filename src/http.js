@@ -1,4 +1,4 @@
-import crypto from 'crypto'
+import CryptoJS from 'crypto-js'
 import zip from 'lodash.zipobject'
 
 import 'isomorphic-fetch'
@@ -110,10 +110,22 @@ const privateCall = ({ apiKey, apiSecret }) => (
       delete data.useServerTime
     }
 
-    const signature = crypto
-      .createHmac('sha256', apiSecret)
+    // const signature = crypto
+    //   .createHmac('sha256', apiSecret)
+    //   .update(makeQueryString({ ...data, timestamp }).substr(1))
+    //   .digest('hex')
+
+    // const signature2 = hex(
+    //   new HMAC(apiSecret).update(makeQueryString({ ...data, timestamp }).substr(1)).digest(),
+    // )
+
+    const signature = CryptoJS.algo.HMAC
+      .create(CryptoJS.algo.SHA256, apiSecret)
       .update(makeQueryString({ ...data, timestamp }).substr(1))
-      .digest('hex')
+      .finalize()
+      .toString()
+
+    // console.log(signature)
 
     const newData = noExtra ? data : { ...data, timestamp, signature }
 
