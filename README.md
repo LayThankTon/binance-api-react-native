@@ -2,8 +2,12 @@
 
 > A complete API wrapper for the [Binance](https://binance.com) API.
 
-Note: This wrapper uses Promises, if they are not supported in your environment, you might
-want to add [a polyfill](https://github.com/stefanpenner/es6-promise) for them.
+This wrapper is a adaptation of a 
+https://github.com/HyperCubeProject/binance-api-node  for React Native
+1) crypto is replaced with crypto-js
+2) fetch?
+3) fixed issue with Packager and .babelrc
+
 
 ### Installation
 
