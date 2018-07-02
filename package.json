@@ -1,6 +1,6 @@
 {
   "name": "binance-api-react-native",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A react native API wrapper for Binance",
   "main": "dist",
   "scripts": {
@@ -40,8 +40,8 @@
   },
   "author": "Georgy Koychev <georgy.koychev@gmail.com>",
   "repository": {
-  	"type": "git",
-  	"url": "https://github.com/gkoychev/binance-api-react-native"
+    "type": "git",
+    "url": "https://github.com/gkoychev/binance-api-react-native"
   },
   "license": "MIT"
 }
