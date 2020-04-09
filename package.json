@@ -53,8 +53,8 @@
   },
   "author": "Thank Ton <lethanhtan195@gmail.com>",
   "repository": {
-  	"type": "git",
-  	"url": "https://github.com/LayThankTon/binance-api-react-native"
+    "type": "git",
+    "url": "https://github.com/LayThankTon/binance-api-react-native"
   },
   "license": "MIT"
 }
