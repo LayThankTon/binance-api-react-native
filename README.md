@@ -1,15 +1,15 @@
-# binance-api-node [![build](https://img.shields.io/travis/Ashlar/binance-api-node/master.svg?style=flat-square)](https://travis-ci.org/Ashlar/binance-api-node) [![cover](https://img.shields.io/coveralls/Ashlar/binance-api-node.svg?style=flat-square)](https://coveralls.io/github/Ashlar/binance-api-node) [![bnb](https://img.shields.io/badge/binance-winner-yellow.svg?style=flat-square)](https://github.com/binance-exchange/binance-api-node)
-
-> A complete API wrapper for the [Binance](https://binance.com) API.
+# binance-api-react-native
 
 Note: This wrapper uses Promises, if they are not supported in your environment, you might
 want to add [a polyfill](https://github.com/stefanpenner/es6-promise) for them.
 
-For PRs or issues, head over to the [source repository](https://github.com/Ashlar/binance-api-node).
+binance-api-react-native from [source repository](https://github.com/gkoychev/binance-api-react-native) follows:
+1. last version of [source repository](https://github.com/Ashlar/binance-api-node)
+2. binance changelog [source repository](https://github.com/binance-exchange/binance-official-api-docs/blob/master/CHANGELOG.md)
 
 ### Installation
 
-    yarn add binance-api-react-native
+    yarn add ltt-binance-api-react-native
 
 ### Getting started
 
@@ -18,7 +18,7 @@ you don't plan on doing authenticated calls. You can create an api key
 [here](https://www.binance.com/userCenter/createApi.html).
 
 ```js
-import Binance from 'binance-api-react-native'
+import Binance from 'ltt-binance-api-react-native'
 
 const client = Binance()
 

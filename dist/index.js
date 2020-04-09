@@ -1,30 +1,31 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.ErrorCodes = undefined;
+exports.WithdrawStatus = exports.DepositStatus = exports.CandleChartInterval = exports.ErrorCodes = exports.default = void 0;
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+var _httpClient = _interopRequireDefault(require("./http-client"));
 
-var _http = require('./http');
-
-var _http2 = _interopRequireDefault(_http);
-
-var _websocket = require('./websocket');
-
-var _websocket2 = _interopRequireDefault(_websocket);
+var _websocket = _interopRequireDefault(require("./websocket"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-exports.default = function () {
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+var _default = function _default() {
   var opts = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-  return _extends({}, (0, _http2.default)(opts), {
-    ws: (0, _websocket2.default)(opts)
+  return _objectSpread({}, (0, _httpClient.default)(opts), {
+    ws: (0, _websocket.default)(opts)
   });
 };
 
-var ErrorCodes = exports.ErrorCodes = {
+exports.default = _default;
+var ErrorCodes = {
   UNKNOWN: -1000,
   DISCONNECTED: -1001,
   UNAUTHORIZED: -1002,
@@ -40,7 +41,8 @@ var ErrorCodes = exports.ErrorCodes = {
   INVALID_SIGNATURE: -1022,
   ILLEGAL_CHARS: -1100,
   TOO_MANY_PARAMETERS: -1101,
-  MANDATORY_PARAM_EMPTY_OR_MALFORMED: -1102, // eslint-disable-line id-length
+  MANDATORY_PARAM_EMPTY_OR_MALFORMED: -1102,
+  // eslint-disable-line id-length
   UNKNOWN_PARAM: -1103,
   UNREAD_PARAMETERS: -1104,
   PARAM_EMPTY: -1105,
@@ -66,3 +68,37 @@ var ErrorCodes = exports.ErrorCodes = {
   BAD_API_KEY_FMT: -2014,
   REJECTED_MBX_KEY: -2015
 };
+exports.ErrorCodes = ErrorCodes;
+var CandleChartInterval = {
+  ONE_MINUTE: '1m',
+  THREE_MINUTES: '3m',
+  FIVE_MINUTES: '5m',
+  FIFTEEN_MINUTES: '15m',
+  THIRTY_MINUTES: '30m',
+  ONE_HOUR: '1h',
+  TWO_HOURS: '2h',
+  FOUR_HOURS: '4h',
+  SIX_HOURS: '6h',
+  EIGHT_HOURS: '8h',
+  TWELVE_HOURS: '12h',
+  ONE_DAY: '1d',
+  THREE_DAYS: '3d',
+  ONE_WEEK: '1w',
+  ONE_MONTH: '1M'
+};
+exports.CandleChartInterval = CandleChartInterval;
+var DepositStatus = {
+  PENDING: 0,
+  SUCCESS: 1
+};
+exports.DepositStatus = DepositStatus;
+var WithdrawStatus = {
+  EMAIL_SENT: 0,
+  CANCELLED: 1,
+  AWAITING_APPROVAL: 2,
+  REJECTED: 3,
+  PROCESSING: 4,
+  FAILURE: 5,
+  COMPLETED: 6
+};
+exports.WithdrawStatus = WithdrawStatus;

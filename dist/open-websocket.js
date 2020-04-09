@@ -1,26 +1,36 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.default = void 0;
 
-var _html5Websocket = require('html5-websocket');
+var _ws = _interopRequireDefault(require("ws"));
 
-var _html5Websocket2 = _interopRequireDefault(_html5Websocket);
-
-var _reconnectingWebsocket = require('reconnecting-websocket');
-
-var _reconnectingWebsocket2 = _interopRequireDefault(_reconnectingWebsocket);
+var _reconnectingWebsocket = _interopRequireDefault(require("reconnecting-websocket"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-exports.default = function (url) {
-  return new _reconnectingWebsocket2.default(url, undefined, {
-    connectionTimeout: 4E3,
-    constructor: typeof window !== 'undefined' ? WebSocket : _html5Websocket2.default,
+var _default = function _default(url) {
+  var rws = new _reconnectingWebsocket.default(url, [], {
+    WebSocket: _ws.default,
+    connectionTimeout: 4e3,
     debug: false,
-    maxReconnectionDelay: 10E3,
+    maxReconnectionDelay: 10e3,
     maxRetries: Infinity,
-    minReconnectionDelay: 4E3
+    minReconnectionDelay: 4e3
   });
+
+  var pong = function pong() {
+    return rws._ws.pong(function () {
+      return null;
+    });
+  };
+
+  rws.addEventListener('open', function () {
+    rws._ws.on('ping', pong);
+  });
+  return rws;
 };
+
+exports.default = _default;
