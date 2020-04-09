@@ -1,6 +1,6 @@
 import zip from 'lodash.zipobject'
 
-import httpMethods from 'http'
+import httpMethods from 'http-client'
 import openWebSocket from 'open-websocket'
 
 const BASE = 'wss://stream.binance.com:9443/ws'
@@ -33,7 +33,8 @@ const depth = (payload, cb) => {
     return w
   })
 
-  return (options) => cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return options =>
+    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
 }
 
 const partialDepth = (payload, cb) => {
@@ -53,7 +54,8 @@ const partialDepth = (payload, cb) => {
     return w
   })
 
-  return (options) => cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return options =>
+    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
 }
 
 const candles = (payload, interval, cb) => {
@@ -108,7 +110,8 @@ const candles = (payload, interval, cb) => {
     return w
   })
 
-  return (options) => cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return options =>
+    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
 }
 
 const tickerTransform = m => ({
@@ -148,7 +151,8 @@ const ticker = (payload, cb) => {
     return w
   })
 
-  return (options) => cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return options =>
+    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
 }
 
 const allTickers = cb => {
@@ -159,45 +163,92 @@ const allTickers = cb => {
     cb(arr.map(m => tickerTransform(m)))
   }
 
-  return (options) => w.close(1000, 'Close handle was called', { keepClosed: true, ...options })
+  return options => w.close(1000, 'Close handle was called', { keepClosed: true, ...options })
 }
 
-const tradesInternal = (payload, streamName, cb) => {
+const aggTradesInternal = (payload, cb) => {
   const cache = (Array.isArray(payload) ? payload : [payload]).map(symbol => {
-    const w = openWebSocket(`${BASE}/${symbol.toLowerCase()}@${streamName}`)
+    const w = openWebSocket(`${BASE}/${symbol.toLowerCase()}@aggTrade`)
     w.onmessage = msg => {
       const {
         e: eventType,
         E: eventTime,
+        T: timestamp,
         s: symbol,
         p: price,
         q: quantity,
-        m: maker,
-        M: isBuyerMaker,
-        a: tradeId,
+        m: isBuyerMaker,
+        M: wasBestPrice,
+        a: aggId,
+        f: firstId,
+        l: lastId,
       } = JSON.parse(msg.data)
 
       cb({
         eventType,
         eventTime,
-        symbol,
+        aggId,
         price,
         quantity,
-        maker,
+        firstId,
+        lastId,
+        timestamp,
+        symbol,
         isBuyerMaker,
-        tradeId,
+        wasBestPrice,
       })
     }
 
     return w
   })
 
-  return (options) => cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return options =>
+    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
 }
 
-const aggTrades = (payload, cb) => tradesInternal(payload, 'aggTrade', cb)
+const tradesInternal = (payload, cb) => {
+  const cache = (Array.isArray(payload) ? payload : [payload]).map(symbol => {
+    const w = openWebSocket(`${BASE}/${symbol.toLowerCase()}@trade`)
+    w.onmessage = msg => {
+      const {
+        e: eventType,
+        E: eventTime,
+        T: tradeTime,
+        s: symbol,
+        p: price,
+        q: quantity,
+        m: isBuyerMaker,
+        M: maker,
+        t: tradeId,
+        a: sellerOrderId,
+        b: buyerOrderId,
+      } = JSON.parse(msg.data)
 
-const trades = (payload, cb) => tradesInternal(payload, 'trade', cb)
+      cb({
+        eventType,
+        eventTime,
+        tradeTime,
+        symbol,
+        price,
+        quantity,
+        isBuyerMaker,
+        maker,
+        tradeId,
+        buyerOrderId,
+        sellerOrderId,
+      })
+    }
+
+    return w
+  })
+
+  return options =>
+    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+}
+
+const aggTrades = (payload, cb) => aggTradesInternal(payload, cb)
+
+const trades = (payload, cb) => tradesInternal(payload, cb)
 
 const userTransforms = {
   outboundAccountInfo: m => ({
@@ -242,6 +293,8 @@ const userTransforms = {
     tradeId: m.t,
     isOrderWorking: m.w,
     isBuyerMaker: m.m,
+    creationTime: m.O,
+    totalQuoteTradeQuantity: m.Z,
   }),
 }
 
@@ -250,24 +303,72 @@ export const userEventHandler = cb => msg => {
   cb(userTransforms[type] ? userTransforms[type](rest) : { type, ...rest })
 }
 
-export const keepStreamAlive = (method, listenKey) => () => method({ listenKey })
+export const keepStreamAlive = (method, listenKey) => method({ listenKey })
 
-const user = opts => cb => {
-  const { getDataStream, keepDataStream, closeDataStream } = httpMethods(opts)
+const user = (opts, margin) => cb => {
+  const methods = httpMethods(opts)
 
-  return getDataStream().then(({ listenKey }) => {
-    const w = openWebSocket(`${BASE}/${listenKey}`)
-    w.onmessage = (msg) => (userEventHandler(cb)(msg))
+  const getDataStream = margin ? methods.marginGetDataStream :  methods.getDataStream
+  const keepDataStream = margin ? methods.marginKeepDataStream : methods.keepDataStream
+  const closeDataStream = margin ? methods.marginCloseDataStream : methods.closeDataStream
 
-    const int = setInterval(keepStreamAlive(keepDataStream, listenKey), 50e3)
-    keepStreamAlive(keepDataStream, listenKey)()
+  let currentListenKey = null
+  let int = null
+  let w = null
 
-    return (options) => {
-      clearInterval(int)
-      closeDataStream({ listenKey })
-      w.close(1000, 'Close handle was called', { keepClosed: true, ...options })
+  const keepAlive = isReconnecting => {
+    if (currentListenKey) {
+      keepStreamAlive(keepDataStream, currentListenKey).catch(() => {
+        closeStream({}, true)
+
+        if (isReconnecting) {
+          setTimeout(() => makeStream(true), 30e3)
+        } else {
+          makeStream(true)
+        }
+      })
     }
-  })
+  }
+
+  const closeStream = (options, catchErrors) => {
+    if (currentListenKey) {
+      clearInterval(int)
+
+      const p = closeDataStream({ listenKey: currentListenKey })
+
+      if (catchErrors) {
+        p.catch(f => f)
+      }
+
+      w.close(1000, 'Close handle was called', { keepClosed: true, ...options })
+      currentListenKey = null
+    }
+  }
+
+  const makeStream = isReconnecting => {
+    return getDataStream()
+      .then(({ listenKey }) => {
+        w = openWebSocket(`${BASE}/${listenKey}`)
+        w.onmessage = msg => userEventHandler(cb)(msg)
+
+        currentListenKey = listenKey
+
+        int = setInterval(() => keepAlive(false), 50e3)
+
+        keepAlive(true)
+
+        return options => closeStream(options)
+      })
+      .catch(err => {
+        if (isReconnecting) {
+          setTimeout(() => makeStream(true), 30e3)
+        } else {
+          throw err
+        }
+      })
+  }
+
+  return makeStream(false)
 }
 
 export default opts => ({
@@ -279,4 +380,5 @@ export default opts => ({
   ticker,
   allTickers,
   user: user(opts),
+  marginUser: user(opts, true)
 })

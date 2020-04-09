@@ -1,13 +1,11 @@
-# binance-api-react-native [![build](https://img.shields.io/travis/HyperCubeProject/binance-api-node.svg?style=flat-square)](https://travis-ci.org/HyperCubeProject/binance-api-node) [![cover](https://img.shields.io/coveralls/HyperCubeProject/binance-api-node.svg?style=flat-square)](https://coveralls.io/github/HyperCubeProject/binance-api-node) 
+# binance-api-node [![build](https://img.shields.io/travis/Ashlar/binance-api-node/master.svg?style=flat-square)](https://travis-ci.org/Ashlar/binance-api-node) [![cover](https://img.shields.io/coveralls/Ashlar/binance-api-node.svg?style=flat-square)](https://coveralls.io/github/Ashlar/binance-api-node) [![bnb](https://img.shields.io/badge/binance-winner-yellow.svg?style=flat-square)](https://github.com/binance-exchange/binance-api-node)
 
 > A complete API wrapper for the [Binance](https://binance.com) API.
 
-This wrapper is a adaptation of a 
-https://github.com/HyperCubeProject/binance-api-node  for React Native
-1) crypto is replaced with crypto-js
-2) fetch?
-3) fixed issue with Packager and .babelrc
+Note: This wrapper uses Promises, if they are not supported in your environment, you might
+want to add [a polyfill](https://github.com/stefanpenner/es6-promise) for them.
 
+For PRs or issues, head over to the [source repository](https://github.com/Ashlar/binance-api-node).
 
 ### Installation
 
@@ -28,6 +26,7 @@ const client = Binance()
 const client2 = Binance({
   apiKey: 'xxx',
   apiSecret: 'xxx',
+  getTime: xxx, // time generator function, optional, defaults to () => Date.now()
 })
 
 client.time().then(time => console.log(time))
@@ -45,39 +44,56 @@ Following examples will use the `await` form, which requires some configuration 
 ### Table of Contents
 
 - [Public REST Endpoints](#public-rest-endpoints)
-    - [ping](#ping)
-    - [time](#time)
-    - [exchangeInfo](#exchangeinfo)
-    - [book](#book)
-    - [candles](#candles)
-    - [aggTrades](#aggtrades)
-    - [trades](#trades)
-    - [dailyStats](#dailystats)
-    - [prices](#prices)
-    - [allBookTickers](#allbooktickers)
+  - [ping](#ping)
+  - [time](#time)
+  - [exchangeInfo](#exchangeinfo)
+  - [book](#book)
+  - [candles](#candles)
+  - [aggTrades](#aggtrades)
+  - [trades](#trades)
+  - [dailyStats](#dailystats)
+  - [avgPrice](#avgPrice)
+  - [prices](#prices)
+  - [allBookTickers](#allbooktickers)
+- [Futures Public REST Endpoints](#futures-public-rest-endpoints)
+  - [futures ping](#futures-ping)
+  - [futures time](#futures-time)
+  - [futures exchangeInfo](#futures-exchangeinfo)
+  - [futures book](#futures-book)
+  - [futures candles](#futures-candles)
+  - [futures aggTrades](#futures-aggtrades)
+  - [futures trades](#futures-trades)
+  - [futures dailyStats](#futures-dailystats)
+  - [futures avgPrice](#futures-avgPrice)
+  - [futures prices](#futures-prices)
+  - [futures allBookTickers](#futures-allbooktickers)
+  - [futures markPrice](#futures-markPrice)
+  - [futures allForceOrders](#futures-allForceOrders)
 - [Authenticated REST Endpoints](#authenticated-rest-endpoints)
-    - [order](#order)
-    - [orderTest](#ordertest)
-    - [getOrder](#getorder)
-    - [cancelOrder](#cancelorder)
-    - [openOrders](#openorders)
-    - [allOrders](#allorders)
-    - [accountInfo](#accountinfo)
-    - [myTrades](#mytrades)
-    - [tradesHistory](#tradeshistory)
-    - [depositHistory](#deposithistory)
-    - [withdrawHistory](#withdrawhistory)
-    - [withdraw](#withdraw)
-    - [depositAddress](#depositaddress)
+  - [order](#order)
+  - [orderTest](#ordertest)
+  - [orderOco](#orderoco)
+  - [getOrder](#getorder)
+  - [cancelOrder](#cancelorder)
+  - [openOrders](#openorders)
+  - [allOrders](#allorders)
+  - [accountInfo](#accountinfo)
+  - [myTrades](#mytrades)
+  - [tradesHistory](#tradeshistory)
+  - [depositHistory](#deposithistory)
+  - [withdrawHistory](#withdrawhistory)
+  - [withdraw](#withdraw)
+  - [depositAddress](#depositaddress)
+  - [tradeFee](#tradefee)
 - [Websockets](#websockets)
-    - [depth](#depth)
-    - [partialDepth](#partialdepth)
-    - [ticker](#ticker)
-    - [allTickers](#alltickers)
-    - [candles](#candles-1)
-    - [aggTrades](#aggtrades-1)
-    - [trades](#trades-1)
-    - [user](#user)
+  - [depth](#depth)
+  - [partialDepth](#partialdepth)
+  - [ticker](#ticker)
+  - [allTickers](#alltickers)
+  - [candles](#candles-1)
+  - [aggTrades](#aggtrades-1)
+  - [trades](#trades-1)
+  - [user](#user)
 - [ErrorCodes](#errorcodes)
 
 ### Public REST Endpoints
@@ -124,18 +140,21 @@ console.log(await client.exchangeInfo())
   "serverTime": 1508631584636,
   "rateLimits": [
     {
-      "rateLimitType": "REQUESTS",
+      "rateLimitType": "REQUEST_WEIGHT",
       "interval": "MINUTE",
+      "intervalNum": 1,
       "limit": 1200
     },
     {
       "rateLimitType": "ORDERS",
       "interval": "SECOND",
+      "intervalNum": 1,
       "limit": 10
     },
     {
       "rateLimitType": "ORDERS",
       "interval": "DAY",
+      "intervalNum": 1,
       "limit": 100000
     }
   ],
@@ -177,10 +196,10 @@ Get the order book for a symbol.
 console.log(await client.book({ symbol: 'ETHBTC' }))
 ```
 
-|Param|Type|Required|Default|
-|--- |--- |--- |--- |
-|symbol|String|true|
-|limit|Number|false|`100`|
+| Param  | Type   | Required | Default |
+| ------ | ------ | -------- | ------- |
+| symbol | String | true     |
+| limit  | Number | false    | `100`   |
 
 <details>
 <summary>Output</summary>
@@ -211,30 +230,32 @@ Retrieves Candlestick for a symbol. Candlesticks are uniquely identified by thei
 console.log(await client.candles({ symbol: 'ETHBTC' }))
 ```
 
-|Param|Type|Required|Default|Description|
-|--- |--- |--- |--- |--- |
-|symbol|String|true|
-|interval|String|false|`5m`|`1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`,<br>`4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, `1M`|
-|limit|Number|false|`500`|Max `500`|
-|startTime|Number|false|
-|endTime|Number|false|
+| Param     | Type   | Required | Default | Description                                                                                    |
+| --------- | ------ | -------- | ------- | ---------------------------------------------------------------------------------------------- |
+| symbol    | String | true     |
+| interval  | String | false    | `5m`    | `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`,<br>`4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, `1M` |
+| limit     | Number | false    | `500`   | Max `1000`                                                                                     |
+| startTime | Number | false    |
+| endTime   | Number | false    |
 
 <details>
 <summary>Output</summary>
 
 ```js
-[{
-  openTime: 1508328900000,
-  open: '0.05655000',
-  high: '0.05656500',
-  low: '0.05613200',
-  close: '0.05632400',
-  volume: '68.88800000',
-  closeTime: 1508329199999,
-  quoteAssetVolume: '2.29500857',
-  trades: 85,
-  baseAssetVolume: '40.61900000'
-}]
+;[
+  {
+    openTime: 1508328900000,
+    open: '0.05655000',
+    high: '0.05656500',
+    low: '0.05613200',
+    close: '0.05632400',
+    volume: '68.88800000',
+    closeTime: 1508329199999,
+    quoteAssetVolume: '2.29500857',
+    trades: 85,
+    baseAssetVolume: '40.61900000',
+  },
+]
 ```
 
 </details>
@@ -247,13 +268,13 @@ Get compressed, aggregate trades. Trades that fill at the time, from the same or
 console.log(await client.aggTrades({ symbol: 'ETHBTC' }))
 ```
 
-|Param|Type|Required|Default|Description|
-|--- |--- |--- |--- |--- |
-|symbol|String|true|
-|fromId|String|false||ID to get aggregate trades from INCLUSIVE.|
-|startTime|Number|false||Timestamp in ms to get aggregate trades from INCLUSIVE.
-|endTime|Number|false||Timestamp in ms to get aggregate trades until INCLUSIVE.|
-|limit|Number|false|`500`|Max `500`|
+| Param     | Type   | Required | Default | Description                                              |
+| --------- | ------ | -------- | ------- | -------------------------------------------------------- |
+| symbol    | String | true     |
+| fromId    | String | false    |         | ID to get aggregate trades from INCLUSIVE.               |
+| startTime | Number | false    |         | Timestamp in ms to get aggregate trades from INCLUSIVE.  |
+| endTime   | Number | false    |         | Timestamp in ms to get aggregate trades until INCLUSIVE. |
+| limit     | Number | false    | `500`   | Max `500`                                                |
 
 Note: If both `startTime` and `endTime` are sent, `limit` should not be sent AND the distance between `startTime` and `endTime` must be less than 24 hours.
 
@@ -263,16 +284,19 @@ Note: If `frondId`, `startTime`, and `endTime` are not sent, the most recent agg
 <summary>Output</summary>
 
 ```js
-[{
-  aggId: 2107132,
-  price: '0.05390400',
-  quantity: '1.31000000',
-  firstId: 2215345,
-  lastId: 2215345,
-  timestamp: 1508478599481,
-  isBuyerMaker: true,
-  wasBestPrice: true
-}]
+;[
+  {
+    aggId: 2107132,
+    symbol: 'ETHBTC',
+    price: '0.05390400',
+    quantity: '1.31000000',
+    firstId: 2215345,
+    lastId: 2215345,
+    timestamp: 1508478599481,
+    isBuyerMaker: true,
+    wasBestPrice: true,
+  },
+]
 ```
 
 </details>
@@ -285,24 +309,24 @@ Get recent trades of a symbol.
 console.log(await client.trades({ symbol: 'ETHBTC' }))
 ```
 
-|Param|Type|Required|Default|Description|
-|--- |--- |--- |--- |--- |
-|symbol|String|true|
-|limit|Number|false|`500`|Max `500`|
+| Param  | Type   | Required | Default | Description |
+| ------ | ------ | -------- | ------- | ----------- |
+| symbol | String | true     |
+| limit  | Number | false    | `500`   | Max `500`   |
 
 <details>
 <summary>Output</summary>
 
 ```js
-[
+;[
   {
-    "id": 28457,
-    "price": "4.00000100",
-    "qty": "12.00000000",
-    "time": 1499865549590,
-    "isBuyerMaker": true,
-    "isBestMatch": true
-  }
+    id: 28457,
+    price: '4.00000100',
+    qty: '12.00000000',
+    time: 1499865549590,
+    isBuyerMaker: true,
+    isBestMatch: true,
+  },
 ]
 ```
 
@@ -316,9 +340,9 @@ console.log(await client.trades({ symbol: 'ETHBTC' }))
 console.log(await client.dailyStats({ symbol: 'ETHBTC' }))
 ```
 
-|Param|Type|Required|
-|--- |--- |--- |
-|symbol|String|false|
+| Param  | Type   | Required |
+| ------ | ------ | -------- |
+| symbol | String | false    |
 
 <details>
 <summary>Output</summary>
@@ -346,6 +370,30 @@ console.log(await client.dailyStats({ symbol: 'ETHBTC' }))
   firstId: 45409308, // First tradeId
   lastId: 45724293, // Last tradeId
   count: 314986 // Trade count
+}
+```
+
+</details>
+
+#### avgPrice
+
+Current average price for a symbol.
+
+```js
+console.log(await client.avgPrice({ symbol: 'ETHBTC' }))
+```
+
+| Param  | Type   | Required |
+| ------ | ------ | -------- |
+| symbol | String | true     |
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  "mins": 5,
+  "price": "9.35751834"
 }
 ```
 
@@ -405,6 +453,397 @@ console.log(await client.allBookTickers())
 
 </details>
 
+#### futures ping
+
+Test connectivity to the API.
+
+```js
+console.log(await client.futuresPing())
+```
+
+#### futures time
+
+Test connectivity to the Rest API and get the current server time.
+
+```js
+console.log(await client.futuresTime())
+```
+
+<details>
+<summary>Output</summary>
+
+```js
+1508478457643
+```
+
+</details>
+
+#### futures exchangeInfo
+
+Get the current exchange trading rules and symbol information.
+
+```js
+console.log(await client.futuresExchangeInfo())
+```
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  "timezone": "UTC",
+  "serverTime": 1508631584636,
+  "rateLimits": [
+    {
+      "rateLimitType": "REQUEST_WEIGHT",
+      "interval": "MINUTE",
+      "intervalNum": 1,
+      "limit": 1200
+    },
+    {
+      "rateLimitType": "ORDERS",
+      "interval": "SECOND",
+      "intervalNum": 1,
+      "limit": 10
+    },
+    {
+      "rateLimitType": "ORDERS",
+      "interval": "DAY",
+      "intervalNum": 1,
+      "limit": 100000
+    }
+  ],
+  "exchangeFilters": [],
+  "symbols": [...]
+}
+```
+
+</details>
+
+#### futures book
+
+Get the order book for a symbol.
+
+```js
+console.log(await client.futuresBook({ symbol: 'BTCUSDT' }))
+```
+
+| Param  | Type   | Required | Default |
+| ------ | ------ | -------- | ------- |
+| symbol | String | true     |
+| limit  | Number | false    | `100`   |
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  lastUpdateId: 17647759,
+  asks:
+   [
+     { price: '8000.05411500', quantity: '54.55000000' },
+     { price: '8000.05416700', quantity: '1111.80100000' }
+   ],
+  bids:
+   [
+     { price: '8000.05395500', quantity: '223.70000000' },
+     { price: '8000.05395100', quantity: '1134.84100000' }
+   ]
+}
+```
+
+</details>
+
+#### futures candles
+
+Retrieves Candlestick for a symbol. Candlesticks are uniquely identified by their open time.
+
+```js
+console.log(await client.futuresCandles({ symbol: 'BTCUSDT' }))
+```
+
+| Param     | Type   | Required | Default | Description                                                                                    |
+| --------- | ------ | -------- | ------- | ---------------------------------------------------------------------------------------------- |
+| symbol    | String | true     |
+| interval  | String | false    | `5m`    | `1m`, `3m`, `5m`, `15m`, `30m`, `1h`, `2h`,<br>`4h`, `6h`, `8h`, `12h`, `1d`, `3d`, `1w`, `1M` |
+| limit     | Number | false    | `500`   | Max `1000`                                                                                     |
+| startTime | Number | false    |
+| endTime   | Number | false    |
+
+<details>
+<summary>Output</summary>
+
+```js
+;[
+  {
+    openTime: 1508328900000,
+    open: '0.05655000',
+    high: '0.05656500',
+    low: '0.05613200',
+    close: '0.05632400',
+    volume: '68.88800000',
+    closeTime: 1508329199999,
+    quoteAssetVolume: '2.29500857',
+    trades: 85,
+    baseAssetVolume: '40.61900000',
+  },
+]
+```
+
+</details>
+
+#### futures aggTrades
+
+Get compressed, aggregate trades. Trades that fill at the time, from the same order, with the same price will have the quantity aggregated.
+
+```js
+console.log(await client.futuresAggTrades({ symbol: 'ETHBTC' }))
+```
+
+| Param     | Type   | Required | Default | Description                                              |
+| --------- | ------ | -------- | ------- | -------------------------------------------------------- |
+| symbol    | String | true     |
+| fromId    | String | false    |         | ID to get aggregate trades from INCLUSIVE.               |
+| startTime | Number | false    |         | Timestamp in ms to get aggregate trades from INCLUSIVE.  |
+| endTime   | Number | false    |         | Timestamp in ms to get aggregate trades until INCLUSIVE. |
+| limit     | Number | false    | `500`   | Max `500`                                                |
+
+Note: If both `startTime` and `endTime` are sent, `limit` should not be sent AND the distance between `startTime` and `endTime` must be less than 24 hours.
+
+Note: If `frondId`, `startTime`, and `endTime` are not sent, the most recent aggregate trades will be returned.
+
+<details>
+<summary>Output</summary>
+
+```js
+;[
+  {
+    aggId: 2107132,
+    price: '0.05390400',
+    quantity: '1.31000000',
+    firstId: 2215345,
+    lastId: 2215345,
+    timestamp: 1508478599481,
+    isBuyerMaker: true,
+    wasBestPrice: true,
+  },
+]
+```
+
+</details>
+
+#### futures trades
+
+Get recent trades of a symbol.
+
+```js
+console.log(await client.futuresTrades({ symbol: 'ETHBTC' }))
+```
+
+| Param  | Type   | Required | Default | Description |
+| ------ | ------ | -------- | ------- | ----------- |
+| symbol | String | true     |
+| limit  | Number | false    | `500`   | Max `500`   |
+
+<details>
+<summary>Output</summary>
+
+```js
+;[
+  {
+    id: 28457,
+    price: '4.00000100',
+    qty: '12.00000000',
+    time: 1499865549590,
+    isBuyerMaker: true,
+    isBestMatch: true,
+  },
+]
+```
+
+</details>
+
+#### futures dailyStats
+
+24 hour price change statistics, not providing a symbol will return all tickers and is resource-expensive.
+
+```js
+console.log(await client.futuresDailyStats({ symbol: 'ETHBTC' }))
+```
+
+| Param  | Type   | Required |
+| ------ | ------ | -------- |
+| symbol | String | false    |
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  symbol: 'BTCUSDT',
+  priceChange: '-0.00112000',
+  priceChangePercent: '-1.751',
+  weightedAvgPrice: '0.06324784',
+  prevClosePrice: '0.06397400',
+  lastPrice: '0.06285500',
+  lastQty: '0.63500000',
+  bidPrice: '0.06285500',
+  bidQty: '0.81900000',
+  askPrice: '0.06291900',
+  askQty: '2.93800000',
+  openPrice: '0.06397500',
+  highPrice: '0.06419100',
+  lowPrice: '0.06205300',
+  volume: '126240.37200000',
+  quoteVolume: '7984.43091340',
+  openTime: 1521622289427,
+  closeTime: 1521708689427,
+  firstId: 45409308, // First tradeId
+  lastId: 45724293, // Last tradeId
+  count: 314986 // Trade count
+}
+```
+
+</details>
+
+#### futures avgPrice
+
+Current average price for a symbol.
+
+```js
+console.log(await client.futuresAvgPrice({ symbol: 'ETHBTC' }))
+```
+
+| Param  | Type   | Required |
+| ------ | ------ | -------- |
+| symbol | String | true     |
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  "mins": 5,
+  "price": "9.35751834"
+}
+```
+
+</details>
+
+#### futures prices
+
+Latest price for all symbols.
+
+```js
+console.log(await client.futuresPrices())
+```
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  BTCUSDT: '8590.05392500',
+  ETHUSDT: '154.1100',
+  ...
+}
+```
+
+</details>
+
+#### futures allBookTickers
+
+Best price/qty on the order book for all symbols.
+
+```js
+console.log(await client.futuresAllBookTickers())
+```
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  BTCUSDT: {
+    symbol: 'BTCUSDT',
+    bidPrice: '0.04890400',
+    bidQty: '0.74100000',
+    askPrice: '0.05230000',
+    askQty: '0.79900000'
+  },
+  ETHUSDT: {
+    symbol: 'ETHUSDT',
+    bidPrice: '0.89582000',
+    bidQty: '0.63300000',
+    askPrice: '1.02328000',
+    askQty: '0.99900000'
+  }
+  ...
+}
+```
+
+</details>
+
+#### futures markPrice
+
+Mark Price and Funding Rate.
+
+```js
+console.log(await client.futuresMarkPrice())
+```
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+    "symbol": "BTCUSDT",
+    "markPrice": "11012.80409769",
+    "lastFundingRate": "-0.03750000",
+    "nextFundingTime": 1562569200000,
+    "time": 1562566020000
+}
+```
+
+</details>
+
+#### futures AllForceOrders
+
+Get all Liquidation Orders.
+
+```js
+console.log(await client.futuresAllForceOrders())
+```
+
+| Param     | Type   | Required |
+| --------- | ------ | -------- |
+| symbol    | String | false    |
+| startTime | Long   | false    |
+| endTime   | Long   | false    |
+| limit     | Long   | false    |
+
+<details>
+<summary>Output</summary>
+
+```js
+;[
+  {
+    symbol: 'BTCUSDT', // SYMBOL
+    price: '7918.33', // ORDER_PRICE
+    origQty: '0.014', // ORDER_AMOUNT
+    executedQty: '0.014', // FILLED_AMOUNT
+    avragePrice: '7918.33', // AVG_PRICE
+    status: 'FILLED', // STATUS
+    timeInForce: 'IOC', // TIME_IN_FORCE
+    type: 'LIMIT',
+    side: 'SELL', // DIRECTION
+    time: 1568014460893,
+  },
+]
+```
+
+</details>
+
 ### Authenticated REST Endpoints
 
 Note that for all authenticated endpoints, you can pass an extra parameter
@@ -416,44 +855,46 @@ the request.
 Creates a new order.
 
 ```js
-console.log(await client.order({
-  symbol: 'XLMETH',
-  side: 'BUY',
-  quantity: 100,
-  price: 0.0002,
-}))
+console.log(
+  await client.order({
+    symbol: 'XLMETH',
+    side: 'BUY',
+    quantity: 100,
+    price: 0.0002,
+  }),
+)
 ```
 
-|Param|Type|Required|Default|Description|
-|--- |--- |--- |--- |--- |
-|symbol|String|true|
-|side|String|true||`BUY`,`SELL`|
-|type|String|false|`LIMIT`|`LIMIT`, `MARKET`|
-|quantity|Number|true|
-|price|Number|true||Optional for `MARKET` orders|
-|timeInForce|String|false|`GTC`|`FOK`, `GTC`, `IOC`|
-|newClientOrderId|String|false||A unique id for the order. Automatically generated if not sent.|
-|stopPrice|Number|false||Used with stop orders|
-|newOrderRespType|String|false|`RESULT`|Returns more complete info of the order. `ACK`, `RESULT`, or `FULL`|
-|icebergQty|Number|false||Used with iceberg orders|
-|recvWindow|Number|false|
+| Param            | Type   | Required | Default  | Description                                                         |
+| ---------------- | ------ | -------- | -------- | ------------------------------------------------------------------- |
+| symbol           | String | true     |
+| side             | String | true     |          | `BUY`,`SELL`                                                        |
+| type             | String | false    | `LIMIT`  | `LIMIT`, `MARKET`                                                   |
+| quantity         | Number | true     |
+| price            | Number | true     |          | Optional for `MARKET` orders                                        |
+| timeInForce      | String | false    | `GTC`    | `FOK`, `GTC`, `IOC`                                                 |
+| newClientOrderId | String | false    |          | A unique id for the order. Automatically generated if not sent.     |
+| stopPrice        | Number | false    |          | Used with stop orders                                               |
+| newOrderRespType | String | false    | `RESULT` | Returns more complete info of the order. `ACK`, `RESULT`, or `FULL` |
+| icebergQty       | Number | false    |          | Used with iceberg orders                                            |
+| recvWindow       | Number | false    |
 
 Additional mandatory parameters based on `type`:
 
-Type | Additional mandatory parameters
------------- | ------------
-`LIMIT` | `timeInForce`, `quantity`, `price`
-`MARKET` | `quantity`
-`STOP_LOSS` | `quantity`, `stopPrice`
-`STOP_LOSS_LIMIT` | `timeInForce`, `quantity`,  `price`, `stopPrice`
-`TAKE_PROFIT` | `quantity`, `stopPrice`
-`TAKE_PROFIT_LIMIT` | `timeInForce`, `quantity`, `price`, `stopPrice`
-`LIMIT_MAKER` | `quantity`, `price`
+| Type                | Additional mandatory parameters                 |
+| ------------------- | ----------------------------------------------- |
+| `LIMIT`             | `timeInForce`, `quantity`, `price`              |
+| `MARKET`            | `quantity`                                      |
+| `STOP_LOSS`         | `quantity`, `stopPrice`                         |
+| `STOP_LOSS_LIMIT`   | `timeInForce`, `quantity`, `price`, `stopPrice` |
+| `TAKE_PROFIT`       | `quantity`, `stopPrice`                         |
+| `TAKE_PROFIT_LIMIT` | `timeInForce`, `quantity`, `price`, `stopPrice` |
+| `LIMIT_MAKER`       | `quantity`, `price`                             |
 
-* `LIMIT_MAKER` are `LIMIT` orders that will be rejected if they would immediately match and trade as a taker.
-* `STOP_LOSS` and `TAKE_PROFIT` will execute a `MARKET` order when the `stopPrice` is reached.
-* Any `LIMIT` or `LIMIT_MAKER` type order can be made an iceberg order by sending an `icebergQty`.
-* Any order with an `icebergQty` MUST have `timeInForce` set to `GTC`.
+- `LIMIT_MAKER` are `LIMIT` orders that will be rejected if they would immediately match and trade as a taker.
+- `STOP_LOSS` and `TAKE_PROFIT` will execute a `MARKET` order when the `stopPrice` is reached.
+- Any `LIMIT` or `LIMIT_MAKER` type order can be made an iceberg order by sending an `icebergQty`.
+- Any order with an `icebergQty` MUST have `timeInForce` set to `GTC`.
 
 <details>
 <summary>Output</summary>
@@ -482,43 +923,153 @@ Test new order creation and signature/recvWindow. Creates and validates a new or
 
 Same API as above, but does not return any output on success.
 
-#### getOrder
+#### orderOco
 
-Check an order's status.
+Creates a new OCO order.
 
 ```js
-console.log(await client.getOrder({
-  symbol: 'ETHBTC',
-  orderId: 1,
-}))
+console.log(
+  await client.orderOco({
+    symbol: 'XLMETH',
+    side: 'SELL',
+    quantity: 100,
+    price: 0.0002,
+    stopPrice: 0.0001,
+    stopLimitPrice: 0.0001,
+  }),
+)
 ```
 
-|Param|Type|Required|Description|
-|--- |--- |--- |--- |
-|symbol|String|true|
-|orderId|Number|true|Not required if `origClientOrderId` is used|
-|origClientOrderId|String|false|
-|recvWindow|Number|false|
+| Param                | Type   | Required | Description
+|----------------------|--------|----------|------------
+| symbol               | String | true     |
+| listClientOrderId    | String | false    | A unique Id for the entire orderList
+| side                 | String | true     | `BUY`,`SELL`
+| quantity             | Number | true     |
+| limitClientOrderId   | String | false    | A unique Id for the limit order
+| price                | Number | true     |
+| limitIcebergQty      | Number | false    | Used to make the `LIMIT_MAKER` leg an iceberg order.
+| stopClientOrderId    | String | false    | A unique Id for the stop loss/stop loss limit leg
+| stopPrice            | Number | true
+| stopLimitPrice       | Number | false    | If provided, `stopLimitTimeInForce` is required.
+| stopIcebergQty       | Number | false    | Used with `STOP_LOSS_LIMIT` leg to make an iceberg order.
+| stopLimitTimeInForce | String | false    | `FOK`, `GTC`, `IOC`
+| newOrderRespType     | String | false    | Returns more complete info of the order. `ACK`, `RESULT`, or `FULL`
+| recvWindow           | Number | false    | The value cannot be greater than `60000`
+
+Additional Info:
+- Price Restrictions:
+    - `SELL`: Limit Price > Last Price > Stop Price
+    - `BUY`: Limit Price < Last Price < Stop Price
+- Quantity Restrictions:
+    - Both legs must have the same quantity.
+    - ```ICEBERG``` quantities however do not have to be the same
 
 <details>
 <summary>Output</summary>
 
 ```js
 {
-  symbol: 'ENGETH',
-  orderId: 191938,
-  clientOrderId: '1XZTVBTGS4K1e',
-  price: '0.00138000',
-  origQty: '1.00000000',
-  executedQty: '1.00000000',
+  "orderListId": 0,
+  "contingencyType": "OCO",
+  "listStatusType": "EXEC_STARTED",
+  "listOrderStatus": "EXECUTING",
+  "listClientOrderId": "JYVpp3F0f5CAG15DhtrqLp",
+  "transactionTime": 1514418413947,
+  "symbol": "XLMETH",
+  "orders": [
+    {
+      "symbol": "XLMETH",
+      "orderId": 1740797,
+      "clientOrderId": "1XZTVBTGS4K1e"
+    },
+    {
+      "symbol": "XLMETH",
+      "orderId": 1740798,
+      "clientOrderId": "1XZTVBTGS4K1f"
+    }
+  ],
+  "orderReports": [
+    {
+      "symbol": "XLMETH",
+      "orderId": 1740797,
+      "orderListId": 0,
+      "clientOrderId": "1XZTVBTGS4K1e",
+      "transactTime": 1514418413947,
+      "price": "0.000000",
+      "origQty": "100",
+      "executedQty": "0.000000",
+      "cummulativeQuoteQty": "0.000000",
+      "status": "NEW",
+      "timeInForce": "GTC",
+      "type": "STOP_LOSS",
+      "side": "SELL",
+      "stopPrice": "0.0001"
+    },
+    {
+      "symbol": "XLMETH",
+      "orderId": 1740798,
+      "orderListId": 0,
+      "clientOrderId": "1XZTVBTGS4K1f",
+      "transactTime": 1514418413947,
+      "price": "0.0002",
+      "origQty": "100",
+      "executedQty": "0.000000",
+      "cummulativeQuoteQty": "0.000000",
+      "status": "NEW",
+      "timeInForce": "GTC",
+      "type": "LIMIT_MAKER",
+      "side": "SELL"
+    }
+  ]
+}
+```
+
+</details>
+
+#### getOrder
+
+Check an order's status.
+
+```js
+console.log(
+  await client.getOrder({
+    symbol: 'BNBETH',
+    orderId: 50167927,
+  }),
+)
+```
+
+| Param             | Type   | Required | Description                                 |
+| ----------------- | ------ | -------- | ------------------------------------------- |
+| symbol            | String | true     |
+| orderId           | Number | true     | Not required if `origClientOrderId` is used |
+| origClientOrderId | String | false    |
+| recvWindow        | Number | false    |
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  clientOrderId: 'NkQnNkdBV1RGjUALLhAzNy',
+  cummulativeQuoteQty: '0.16961580',
+  executedQty: '3.91000000',
+  icebergQty: '0.00000000',
+  isWorking: true,
+  orderId: 50167927,
+  origQty: '3.91000000',
+  price: '0.04338000',
+  side: 'SELL',
   status: 'FILLED',
+  stopPrice: '0.00000000',
+  symbol: 'BNBETH',
+  time: 1547075007821,
   timeInForce: 'GTC',
   type: 'LIMIT',
-  side: 'SELL',
-  stopPrice: '0.00000000',
-  icebergQty: '0.00000000',
-  time: 1508611114735
+  updateTime: 1547075016737
 }
+
 ```
 
 </details>
@@ -528,19 +1079,21 @@ console.log(await client.getOrder({
 Cancels an active order.
 
 ```js
-console.log(await client.cancelOrder({
-  symbol: 'ETHBTC',
-  orderId: 1,
-}))
+console.log(
+  await client.cancelOrder({
+    symbol: 'ETHBTC',
+    orderId: 1,
+  }),
+)
 ```
 
-|Param|Type|Required|Description|
-|--- |--- |--- |--- |
-|symbol|String|true|
-|orderId|Number|true|Not required if `origClientOrderId` is used|
-|origClientOrderId|String|false|
-|newClientOrderId|String|false|Used to uniquely identify this cancel. Automatically generated by default.|
-|recvWindow|Number|false|
+| Param             | Type   | Required | Description                                                                |
+| ----------------- | ------ | -------- | -------------------------------------------------------------------------- |
+| symbol            | String | true     |
+| orderId           | Number | true     | Not required if `origClientOrderId` is used                                |
+| origClientOrderId | String | false    |
+| newClientOrderId  | String | false    | Used to uniquely identify this cancel. Automatically generated by default. |
+| recvWindow        | Number | false    |
 
 <details>
 <summary>Output</summary>
@@ -561,36 +1114,40 @@ console.log(await client.cancelOrder({
 Get all open orders on a symbol.
 
 ```js
-console.log(await client.openOrders({
-  symbol: 'XLMBTC',
-}))
+console.log(
+  await client.openOrders({
+    symbol: 'XLMBTC',
+  }),
+)
 ```
 
-|Param|Type|Required|
-|--- |--- |--- |
-|symbol|String|true|
-|recvWindow|Number|false|
+| Param      | Type   | Required |
+| ---------- | ------ | -------- |
+| symbol     | String | true     |
+| recvWindow | Number | false    |
 
 <details>
 <summary>Output</summary>
 
 ```js
-[{
-  symbol: 'XLMBTC',
-  orderId: 11271740,
-  clientOrderId: 'ekHkROfW98gBN80LTfufQZ',
-  price: '0.00001081',
-  origQty: '1331.00000000',
-  executedQty: '0.00000000',
-  status: 'NEW',
-  timeInForce: 'GTC',
-  type: 'LIMIT',
-  side: 'BUY',
-  stopPrice: '0.00000000',
-  icebergQty: '0.00000000',
-  time: 1522682290485,
-  isWorking: true
-}]
+;[
+  {
+    symbol: 'XLMBTC',
+    orderId: 11271740,
+    clientOrderId: 'ekHkROfW98gBN80LTfufQZ',
+    price: '0.00001081',
+    origQty: '1331.00000000',
+    executedQty: '0.00000000',
+    status: 'NEW',
+    timeInForce: 'GTC',
+    type: 'LIMIT',
+    side: 'BUY',
+    stopPrice: '0.00000000',
+    icebergQty: '0.00000000',
+    time: 1522682290485,
+    isWorking: true,
+  },
+]
 ```
 
 </details>
@@ -600,37 +1157,42 @@ console.log(await client.openOrders({
 Get all account orders on a symbol; active, canceled, or filled.
 
 ```js
-console.log(await client.allOrders({
-  symbol: 'ETHBTC',
-}))
+console.log(
+  await client.allOrders({
+    symbol: 'ETHBTC',
+  }),
+)
 ```
 
-|Param|Type|Required|Default|Description|
-|--- |--- |--- |--- |--- |
-|symbol|String|true|
-|orderId|Number|false||If set, it will get orders >= that orderId. Otherwise most recent orders are returned.|
-|limit|Number|false|`500`|Max `500`|
-|recvWindow|Number|false|
+| Param      | Type   | Required | Default | Description                                                                            |
+| ---------- | ------ | -------- | ------- | -------------------------------------------------------------------------------------- |
+| symbol     | String | true     |
+| orderId    | Number | false    |         | If set, it will get orders >= that orderId. Otherwise most recent orders are returned. |
+| limit      | Number | false    | `500`   | Max `500`                                                                              |
+| recvWindow | Number | false    |
 
 <details>
 <summary>Output</summary>
 
 ```js
-[{
-  symbol: 'ENGETH',
-  orderId: 191938,
-  clientOrderId: '1XZTVBTGS4K1e',
-  price: '0.00138000',
-  origQty: '1.00000000',
-  executedQty: '1.00000000',
-  status: 'FILLED',
-  timeInForce: 'GTC',
-  type: 'LIMIT',
-  side: 'SELL',
-  stopPrice: '0.00000000',
-  icebergQty: '0.00000000',
-  time: 1508611114735
-}]
+;[
+  {
+    symbol: 'ENGETH',
+    orderId: 191938,
+    clientOrderId: '1XZTVBTGS4K1e',
+    price: '0.00138000',
+    origQty: '1.00000000',
+    executedQty: '1.00000000',
+    status: 'FILLED',
+    timeInForce: 'GTC',
+    type: 'LIMIT',
+    side: 'SELL',
+    stopPrice: '0.00000000',
+    icebergQty: '0.00000000',
+    time: 1508611114735,
+    isWorking: true,
+  },
+]
 ```
 
 </details>
@@ -643,9 +1205,9 @@ Get current account information.
 console.log(await client.accountInfo())
 ```
 
-|Param|Type|Required|
-|--- |--- |--- |
-|recvWindow|Number|false|
+| Param      | Type   | Required |
+| ---------- | ------ | -------- |
+| recvWindow | Number | false    |
 
 <details>
 <summary>Output</summary>
@@ -673,34 +1235,38 @@ console.log(await client.accountInfo())
 Get trades for the current authenticated account and symbol.
 
 ```js
-console.log(await client.myTrades({
-  symbol: 'ETHBTC',
-}))
+console.log(
+  await client.myTrades({
+    symbol: 'ETHBTC',
+  }),
+)
 ```
 
-|Param|Type|Required|Default|Description|
-|--- |--- |--- |--- |--- |
-|symbol|String|true|
-|limit|Number|false|`500`|Max `500`|
-|fromId|Number|false||TradeId to fetch from. Default gets most recent trades.|
-|recvWindow|Number|false|
+| Param      | Type   | Required | Default | Description                                             |
+| ---------- | ------ | -------- | ------- | ------------------------------------------------------- |
+| symbol     | String | true     |
+| limit      | Number | false    | `500`   | Max `500`                                               |
+| fromId     | Number | false    |         | TradeId to fetch from. Default gets most recent trades. |
+| recvWindow | Number | false    |
 
 <details>
 <summary>Output</summary>
 
 ```js
-[{
-  id: 9960,
-  orderId: 191939,
-  price: '0.00138000',
-  qty: '10.00000000',
-  commission: '0.00001380',
-  commissionAsset: 'ETH',
-  time: 1508611114735,
-  isBuyer: false,
-  isMaker: false,
-  isBestMatch: true
-}]
+;[
+  {
+    id: 9960,
+    orderId: 191939,
+    price: '0.00138000',
+    qty: '10.00000000',
+    commission: '0.00001380',
+    commissionAsset: 'ETH',
+    time: 1508611114735,
+    isBuyer: false,
+    isMaker: false,
+    isBestMatch: true,
+  },
+]
 ```
 
 </details>
@@ -713,25 +1279,25 @@ Lookup symbol trades history.
 console.log(await client.tradesHistory({ symbol: 'ETHBTC' }))
 ```
 
-|Param|Type|Required|Default|Description|
-|--- |--- |--- |--- |--- |
-|symbol|String|true|
-|limit|Number|false|`500`|Max `500`|
-|fromId|Number|false|`null`|TradeId to fetch from. Default gets most recent trades.|
+| Param  | Type   | Required | Default | Description                                             |
+| ------ | ------ | -------- | ------- | ------------------------------------------------------- |
+| symbol | String | true     |
+| limit  | Number | false    | `500`   | Max `500`                                               |
+| fromId | Number | false    | `null`  | TradeId to fetch from. Default gets most recent trades. |
 
 <details>
 <summary>Output</summary>
 
 ```js
-[
+;[
   {
-    "id": 28457,
-      "price": "4.00000100",
-      "qty": "12.00000000",
-      "time": 1499865549590,
-      "isBuyerMaker": true,
-      "isBestMatch": true
-  }
+    id: 28457,
+    price: '4.00000100',
+    qty: '12.00000000',
+    time: 1499865549590,
+    isBuyerMaker: true,
+    isBestMatch: true,
+  },
 ]
 ```
 
@@ -745,13 +1311,13 @@ Get the account deposit history.
 console.log(await client.depositHistory())
 ```
 
-|Param|Type|Required|Description|
-|--- |--- |--- |--- |
-|asset|String|false|
-|status|Number|false|0 (0: pending, 1: success)|
-|startTime|Number|false|
-|endTime|Number|false|
-|recvWindow|Number|false|
+| Param      | Type   | Required | Description                |
+| ---------- | ------ | -------- | -------------------------- |
+| asset      | String | false    |
+| status     | Number | false    | 0 (0: pending, 1: success) |
+| startTime  | Number | false    |
+| endTime    | Number | false    |
+| recvWindow | Number | false    |
 
 <details>
 <summary>Output</summary>
@@ -780,13 +1346,13 @@ Get the account withdraw history.
 console.log(await client.withdrawHistory())
 ```
 
-|Param|Type|Required|Description|
-|--- |--- |--- |--- |
-|asset|String|false|
-|status|Number|false|0 (0: Email Sent, 1: Cancelled 2: Awaiting Approval, 3: Rejected, 4: Processing, 5: Failure, 6: Completed)|
-|startTime|Number|false|
-|endTime|Number|false|
-|recvWindow|Number|false|
+| Param      | Type   | Required | Description                                                                                                |
+| ---------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------- |
+| asset      | String | false    |
+| status     | Number | false    | 0 (0: Email Sent, 1: Cancelled 2: Awaiting Approval, 3: Rejected, 4: Processing, 5: Failure, 6: Completed) |
+| startTime  | Number | false    |
+| endTime    | Number | false    |
+| recvWindow | Number | false    |
 
 <details>
 <summary>Output</summary>
@@ -798,7 +1364,7 @@ console.log(await client.withdrawHistory())
       "amount": 1,
       "address": "0x6915f16f8791d0a1cc2bf47c13a6b2a92000504b",
       "asset": "ETH",
-      "applyTime": 1508198532000
+      "applyTime": 1508198532000,
       "status": 4
     },
   ],
@@ -810,23 +1376,25 @@ console.log(await client.withdrawHistory())
 
 #### withdraw
 
-Triggers the withdraw process (*untested for now*).
+Triggers the withdraw process (_untested for now_).
 
 ```js
-console.log(await client.withdraw({
-  asset: 'ETH',
-  address: '0xfa97c22a03d8522988c709c24283c0918a59c795',
-  amount: 100,
-}))
+console.log(
+  await client.withdraw({
+    asset: 'ETH',
+    address: '0xfa97c22a03d8522988c709c24283c0918a59c795',
+    amount: 100,
+  }),
+)
 ```
 
-|Param|Type|Required|Description|
-|--- |--- |--- |--- |
-|asset|String|true|
-|address|String|true|
-|amount|Number|true|
-|name|String|false|Description of the address|
-|recvWindow|Number|false|
+| Param      | Type   | Required | Description                |
+| ---------- | ------ | -------- | -------------------------- |
+| asset      | String | true     |
+| address    | String | true     |
+| amount     | Number | true     |
+| name       | String | false    | Description of the address |
+| recvWindow | Number | false    |
 
 <details>
 <summary>Output</summary>
@@ -848,9 +1416,9 @@ Retrieve the account deposit address for a specific asset.
 console.log(await client.depositAddress({ asset: 'NEO' }))
 ```
 
-|Param|Type|Required|Description|
-|--- |--- |--- |--- |
-|asset|String|true|The asset name|
+| Param | Type   | Required | Description    |
+| ----- | ------ | -------- | -------------- |
+| asset | String | true     | The asset name |
 
 <details>
 <summary>Output</summary>
@@ -862,6 +1430,37 @@ console.log(await client.depositAddress({ asset: 'NEO' }))
   asset: 'NEO',
   success: true,
 }
+```
+
+</details>
+
+#### tradeFee
+
+Retrieve the account trade Fee per asset.
+
+```js
+console.log(await client.tradeFee())
+```
+
+<details>
+<summary>Output</summary>
+
+```js
+{
+  tradeFee: [{
+    symbol: 'BTC',
+    maker: 0.0001,
+    taker: 0.0001,
+  },
+  {
+    symbol: 'LTC',
+    maker: 0.0001,
+    taker: 0.0001,
+  }
+  ...],
+  success: true,
+}
+
 ```
 
 </details>
@@ -1051,11 +1650,15 @@ client.ws.trades(['ETHBTC', 'BNBBTC'], trade => {
 {
   eventType: 'trade',
   eventTime: 1508614495052,
+  tradeTime: 1508614495050,
   symbol: 'ETHBTC',
   price: '0.04923600',
   quantity: '3.43500000',
-  maker: false,
-  tradeId: 2148226
+  isBuyerMaker: true,
+  maker: true,
+  tradeId: 2148226,
+  buyerOrderId: 390876,
+  sellerOrderId: 390752
 }
 ```
 
@@ -1078,11 +1681,15 @@ client.ws.aggTrades(['ETHBTC', 'BNBBTC'], trade => {
 {
   eventType: 'aggTrade',
   eventTime: 1508614495052,
-  symbol: 'ETHBTC',
+  aggId: 2148226,
   price: '0.04923600',
   quantity: '3.43500000',
-  maker: false,
-  tradeId: 2148226
+  firstId: 37856,
+  lastId: 37904,
+  timestamp: 1508614495050,
+  symbol: 'ETHBTC',
+  isBuyerMaker: false,
+  wasBestPrice: true
 }
 ```
 
@@ -1100,7 +1707,17 @@ const clean = await client.ws.user(msg => {
 })
 ```
 
-Note that this method returns a promise which will resolve the `clean` callback.
+Live user messages data feed on margin wallet.
+
+**Requires authentication**
+
+```js
+const clean = await client.ws.marginUser(msg => {
+  console.log(msg)
+})
+```
+
+Note that this methods returns a promise which will resolve the `clean` callback.
 
 <details>
 <summary>Output</summary>
@@ -1113,7 +1730,7 @@ Note that this method returns a promise which will resolve the `clean` callback.
     '123': { available: '0.00000000', locked: '0.00000000' },
     '456': { available: '0.00000000', locked: '0.00000000' },
     BTC: { available: '0.00000000', locked: '0.00000000' },
-  ]
+  }
 }
 ```
 

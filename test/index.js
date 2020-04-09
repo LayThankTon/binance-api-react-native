@@ -1,13 +1,10 @@
 import test from 'ava'
-import dotenv from 'dotenv'
 
 import Binance, { ErrorCodes } from 'index'
-import { candleFields } from 'http'
+import { candleFields } from 'http-client'
 import { userEventHandler } from 'websocket'
 
-import { checkFields } from './utils'
-
-dotenv.load()
+import { checkFields, createHttpServer } from './utils'
 
 const client = Binance()
 
@@ -80,6 +77,7 @@ test('[REST] aggTrades', async t => {
 
   const [trade] = trades
   t.truthy(trade.aggId)
+  t.truthy(trade.symbol)
 })
 
 test('[REST] trades', async t => {
@@ -99,6 +97,12 @@ test('[REST] prices', async t => {
   t.truthy(prices.ETHBTC)
 })
 
+test('[REST] avgPrice', async t => {
+  const res = await client.avgPrice({ symbol: 'ETHBTC' })
+  t.truthy(res)
+  checkFields(t, res, ['mins', 'price'])
+})
+
 test('[REST] allBookTickers', async t => {
   const tickers = await client.allBookTickers()
   t.truthy(tickers)
@@ -110,6 +114,61 @@ test('[REST] Signed call without creds', async t => {
     await client.accountInfo()
   } catch (e) {
     t.is(e.message, 'You need to pass an API key and secret to make authenticated calls.')
+  }
+})
+
+test('[REST] Signed call without creds - attempt getting tradeFee', async t => {
+  try {
+    await client.tradeFee()
+  } catch (e) {
+    t.is(e.message, 'You need to pass an API key and secret to make authenticated calls.')
+  }
+})
+
+test('[REST] Server-side JSON error', async t => {
+  const server = createHttpServer((req, res) => {
+    res.statusCode = 500
+    res.write(
+      JSON.stringify({
+        msg: 'Server unkown error',
+        code: -1337,
+      }),
+    )
+    res.end()
+  })
+  const localClient = Binance({ httpBase: server.url })
+
+  try {
+    await server.start()
+    await localClient.ping()
+    t.fail('did not throw')
+  } catch (e) {
+    t.is(e.message, 'Server unkown error')
+    t.is(e.code, -1337)
+  } finally {
+    await server.stop()
+  }
+})
+
+test('[REST] Server-side HTML error', async t => {
+  const serverReponse = '<html>Server Internal Error</html>'
+  const server = createHttpServer((req, res) => {
+    res.statusCode = 500
+    res.write(serverReponse)
+    res.end()
+  })
+  const localClient = Binance({ httpBase: server.url })
+
+  try {
+    await server.start()
+    await localClient.ping()
+    t.fail('did not throw')
+  } catch (e) {
+    t.is(e.message, `500 Internal Server Error ${serverReponse}`)
+    t.truthy(e.response)
+    t.is(e.responseText, serverReponse)
+  } finally {
+    await server.stop()
   }
 })
 
@@ -177,7 +236,7 @@ test('[WS] candles', t => {
 test('[WS] trades', t => {
   return new Promise(resolve => {
     client.ws.trades(['BNBBTC', 'ETHBTC', 'BNTBTC'], trade => {
-      checkFields(t, trade, ['eventType', 'tradeId', 'quantity', 'price', 'symbol'])
+      checkFields(t, trade, ['eventType', 'tradeId', 'tradeTime', 'quantity', 'price', 'symbol', 'buyerOrderId', 'sellerOrderId'])
       resolve()
     })
   })
@@ -186,7 +245,7 @@ test('[WS] trades', t => {
 test('[WS] aggregate trades', t => {
   return new Promise(resolve => {
     client.ws.aggTrades(['BNBBTC', 'ETHBTC', 'BNTBTC'], trade => {
-      checkFields(t, trade, ['eventType', 'tradeId', 'quantity', 'price', 'symbol'])
+      checkFields(t, trade, ['eventType', 'aggId', 'timestamp', 'quantity', 'price', 'symbol', 'firstId', 'lastId'])
       resolve()
     })
   })
@@ -284,6 +343,8 @@ test('[WS] userEvents', t => {
     w: true,
     m: false,
     M: false,
+    O: 1499405658657,
+    Z: '0.00000000',
   }
 
   userEventHandler(res => {
@@ -313,6 +374,8 @@ test('[WS] userEvents', t => {
       tradeId: -1,
       isOrderWorking: true,
       isBuyerMaker: false,
+      creationTime: 1499405658657,
+      totalQuoteTradeQuantity: '0.00000000',
     })
   })({ data: JSON.stringify(orderPayload) })
 
@@ -345,6 +408,8 @@ test('[WS] userEvents', t => {
     w: false,
     m: false,
     M: true,
+    O: 1499405658657,
+    Z: '2.30570761',
   }
 
   userEventHandler(res => {
@@ -374,6 +439,8 @@ test('[WS] userEvents', t => {
       tradeId: 77517,
       isOrderWorking: false,
       isBuyerMaker: false,
+      creationTime: 1499405658657,
+      totalQuoteTradeQuantity: '2.30570761',
     })
   })({ data: JSON.stringify(tradePayload) })
 
@@ -384,8 +451,123 @@ test('[WS] userEvents', t => {
   })({ data: JSON.stringify(newEvent) })
 })
 
-if (process.env.API_KEY) {
-  require('./authenticated')
-}
+// FUTURES TESTS
 
-require('./websocket-reconnect')
+test('[FUTURES-REST] ping', async t => {
+  t.truthy(await client.futuresPing(), 'A simple ping should work')
+})
+
+test('[FUTURES-REST] time', async t => {
+  const ts = await client.futuresTime()
+  t.truthy(new Date(ts).getTime() > 0, 'The returned timestamp should be valid')
+})
+
+test('[FUTURES-REST] exchangeInfo', async t => {
+  const res = await client.futuresExchangeInfo()
+  checkFields(t, res, ['timezone', 'serverTime', 'rateLimits', 'symbols'])
+})
+
+test('[FUTURES-REST] book', async t => {
+  try {
+    await client.futuresBook()
+  } catch (e) {
+    t.is(e.message, 'You need to pass a payload object.')
+  }
+
+  try {
+    await client.futuresBook({})
+  } catch (e) {
+    t.is(e.message, 'Method book requires symbol parameter.')
+  }
+
+  const book = await client.futuresBook({ symbol: 'BTCUSDT' })
+  t.truthy(book.lastUpdateId)
+  t.truthy(book.asks.length)
+  t.truthy(book.bids.length)
+
+  const [bid] = book.bids
+  t.truthy(typeof bid.price === 'string')
+  t.truthy(typeof bid.quantity === 'string')
+})
+
+test('[FUTURES-REST] markPrice', async t => {
+  const res = await client.futuresMarkPrice()
+  t.truthy(Array.isArray(res))
+  checkFields(t, res[0], ['symbol', 'markPrice', 'lastFundingRate', 'nextFundingTime', 'time'])
+})
+
+test('[FUTURES-REST] allForceOrders', async t => {
+  const res = await client.futuresAllForceOrders()
+  t.truthy(Array.isArray(res))
+  t.truthy(res.length === 100)
+  checkFields(t, res[0], [
+    'symbol',
+    'price',
+    'origQty',
+    'executedQty',
+    'averagePrice',
+    'timeInForce',
+    'type',
+    'side',
+    'time',
+  ])
+})
+
+test('[FUTURES-REST] candles', async t => {
+  try {
+    await client.futuresCandles({})
+  } catch (e) {
+    t.is(e.message, 'Method candles requires symbol parameter.')
+  }
+
+  const candles = await client.candles({ symbol: 'BTCUSDT' })
+
+  t.truthy(candles.length)
+
+  const [candle] = candles
+  checkFields(t, candle, candleFields)
+})
+
+test('[FUTURES-REST] trades', async t => {
+  const trades = await client.futuresTrades({ symbol: 'BTCUSDT', limit: 10 })
+  t.is(trades.length, 10)
+  checkFields(t, trades[0], ['id', 'price', 'qty', 'quoteQty', 'time'])
+})
+
+test('[FUTURES-REST] dailyStats', async t => {
+  const res = await client.futuresDailyStats({ symbol: 'BTCUSDT' })
+  t.truthy(res)
+  checkFields(t, res, ['highPrice', 'lowPrice', 'volume', 'priceChange'])
+})
+
+test('[FUTURES-REST] prices', async t => {
+  const prices = await client.futuresPrices()
+  t.truthy(prices)
+  t.truthy(prices.BTCUSDT)
+})
+
+test('[FUTURES-REST] allBookTickers', async t => {
+  const tickers = await client.futuresAllBookTickers()
+  t.truthy(tickers)
+  t.truthy(tickers.BTCUSDT)
+})
+
+test('[FUTURES-REST] aggTrades', async t => {
+  try {
+    await client.futuresAggTrades({})
+  } catch (e) {
+    t.is(e.message, 'Method aggTrades requires symbol parameter.')
+  }
+
+  const trades = await client.futuresAggTrades({ symbol: 'BTCUSDT' })
+  t.truthy(trades.length)
+
+  const [trade] = trades
+  t.truthy(trade.aggId)
+})
+
+test('[FUTURES-REST] fundingRate', async t => {
+  const fundingRate = await client.futuresFundingRate({ symbol: 'BTCUSDT' })
+  checkFields(t, fundingRate[0], ['symbol', 'fundingTime', 'fundingRate'])
+  t.is(fundingRate.length, 100)
+})
