@@ -1,11 +1,11 @@
-# binance-api-react-native
+# ltt-binance-api-react-native
 
 Note: This wrapper uses Promises, if they are not supported in your environment, you might
 want to add [a polyfill](https://github.com/stefanpenner/es6-promise) for them.
 
-binance-api-react-native from [source repository](https://github.com/gkoychev/binance-api-react-native) follows:
-1. last version of [source repository](https://github.com/Ashlar/binance-api-node)
-2. binance changelog [source repository](https://github.com/binance-exchange/binance-official-api-docs/blob/master/CHANGELOG.md)
+binance-api-react-native from [gkoychev/binance-api-react-native](https://github.com/gkoychev/binance-api-react-native) follows:
+1. last version of [Ashlar/binance-api-node](https://github.com/Ashlar/binance-api-node)
+2. binance changelog [binance-official-api-docs/blob/master/CHANGELOG.md](https://github.com/binance-exchange/binance-official-api-docs/blob/master/CHANGELOG.md)
 
 ### Installation
 
@@ -701,30 +701,6 @@ console.log(await client.futuresDailyStats({ symbol: 'ETHBTC' }))
   firstId: 45409308, // First tradeId
   lastId: 45724293, // Last tradeId
   count: 314986 // Trade count
-}
-```
-
-</details>
-
-#### futures avgPrice
-
-Current average price for a symbol.
-
-```js
-console.log(await client.futuresAvgPrice({ symbol: 'ETHBTC' }))
-```
-
-| Param  | Type   | Required |
-| ------ | ------ | -------- |
-| symbol | String | true     |
-
-<details>
-<summary>Output</summary>
-
-```js
-{
-  "mins": 5,
-  "price": "9.35751834"
 }
 ```
 
