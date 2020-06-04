@@ -1,6 +1,8 @@
 import CryptoJS from 'crypto-js'
 import zip from 'lodash.zipobject'
 
+import 'isomorphic-fetch'
+
 const BASE = 'https://api.binance.com'
 const FUTURES = 'https://fapi.binance.com'
 
@@ -132,11 +134,11 @@ const privateCall = ({ apiKey, apiSecret, endpoints, getTime = defaultGetTime, p
     if (data) {
       delete data.useServerTime
     }
-	const signature = CryptoJS.algo.HMAC
-      .create(CryptoJS.algo.SHA256, apiSecret)
-      .update(makeQueryString({ ...data, timestamp }).substr(1))
-      .finalize()
-      .toString()
+    const signature = CryptoJS.algo.HMAC
+    .create(CryptoJS.algo.SHA256, apiSecret)
+    .update(makeQueryString({ ...data, timestamp }).substr(1))
+    .finalize()
+    .toString()
 
     const newData = noExtra ? data : { ...data, timestamp, signature }
 
@@ -253,21 +255,21 @@ export default opts => {
     candles: payload => candles(pubCall, payload),
 
     trades: payload =>
-      checkParams('trades', payload, ['symbol']) && pubCall('/api/v1/trades', payload),
+      checkParams('trades', payload, ['symbol']) && pubCall('/api/v3/trades', payload),
     tradesHistory: payload =>
       checkParams('tradesHitory', payload, ['symbol']) &&
       kCall('/api/v3/historicalTrades', payload),
 
     dailyStats: payload => pubCall('/api/v3/ticker/24hr', payload),
     prices: () =>
-      pubCall('api/v3/ticker/price').then(r =>
+      pubCall('/api/v3/ticker/price').then(r =>
         r.reduce((out, cur) => ((out[cur.symbol] = cur.price), out), {}),
       ),
 
     avgPrice: payload => pubCall('/api/v3/avgPrice', payload),
 
     allBookTickers: () =>
-      pubCall('api/v3/ticker/bookTicker').then(r =>
+      pubCall('/api/v3/ticker/bookTicker').then(r =>
         r.reduce((out, cur) => ((out[cur.symbol] = cur), out), {}),
       ),
 
@@ -287,8 +289,11 @@ export default opts => {
     getOrder: payload => privCall('/api/v3/order', payload),
     cancelOrder: payload => privCall('/api/v3/order', payload, 'DELETE'),
 
+    cancelOpenOrders: payload => privCall('/api/v3/openOrders', payload, 'DELETE'),
     openOrders: payload => privCall('/api/v3/openOrders', payload),
     allOrders: payload => privCall('/api/v3/allOrders', payload),
+
+    allOrdersOCO: payload => privCall('/api/v3/allOrderList', payload),
 
     accountInfo: payload => privCall('/api/v3/account', payload),
     myTrades: payload => privCall('/api/v3/myTrades', payload),

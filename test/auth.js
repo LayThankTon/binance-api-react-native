@@ -79,6 +79,25 @@ const main = () => {
     checkFields(t, res, ['orderId', 'symbol', 'price', 'type', 'side'])
   })
 
+  test('[REST] allOrdersOCO', async t => {
+    const orderLists = await client.allOrdersOCO({
+      timestamp: new Date().getTime(),
+    })
+
+    t.true(Array.isArray(orderLists))
+
+    if (orderLists.length) {
+      const [orderList] = orderLists
+      checkFields(t, orderList, [
+        'orderListId',
+        'symbol',
+        'transactionTime',
+        'listStatusType',
+        'orders',
+      ])
+    }
+  })
+
   test('[REST] getOrder with useServerTime', async t => {
     const orders = await client.allOrders({
       symbol: 'ETHBTC',
@@ -100,6 +119,14 @@ const main = () => {
   test('[REST] cancelOrder', async t => {
     try {
       await client.cancelOrder({ symbol: 'ETHBTC', orderId: 1 })
+    } catch (e) {
+      t.is(e.message, 'Unknown order sent.')
+    }
+  })
+
+  test('[REST] cancelOpenOrders', async t => {
+    try {
+      await client.cancelOpenOrders({ symbol: 'ETHBTC' })
     } catch (e) {
       t.is(e.message, 'Unknown order sent.')
     }

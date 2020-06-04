@@ -75,8 +75,10 @@ Following examples will use the `await` form, which requires some configuration 
   - [orderOco](#orderoco)
   - [getOrder](#getorder)
   - [cancelOrder](#cancelorder)
+  - [cancelOpenOrders](#cancelOpenOrders)
   - [openOrders](#openorders)
   - [allOrders](#allorders)
+  - [allOrdersOCO](#allordersoco)  
   - [accountInfo](#accountinfo)
   - [myTrades](#mytrades)
   - [tradesHistory](#tradeshistory)
@@ -1085,6 +1087,44 @@ console.log(
 
 </details>
 
+#### cancelOpenOrders
+
+Cancels all active orders on a symbol.
+This includes OCO orders.
+
+```js
+console.log(
+  await client.cancelOpenOrders({
+    symbol: 'ETHBTC'
+  }),
+)
+```
+| Param      | Type     | Required  |
+|------------|----------|-----------|
+| symbol     | String   | true      |  
+
+<details>
+<summary>Output</summary>
+
+```js
+[
+  {
+    symbol: 'ETHBTC',
+    origClientOrderId: 'bnAoRHgI18gRD80FJmsfNP',
+    orderId: 1,
+    clientOrderId: 'RViSsQPTp1v3WmLYpeKT11'
+  },
+  {
+    symbol: 'ETHBTC',
+    origClientOrderId: 'IDbzcGmfwSCKihxILK1snu',
+    orderId: 2,
+    clientOrderId: 'HKFcuWAm9euMgRuwVGR8CL'
+  }
+]
+```
+
+</details>
+
 #### openOrders
 
 Get all open orders on a symbol.
@@ -1172,6 +1212,81 @@ console.log(
 ```
 
 </details>
+
+
+#### allOrdersOCO
+
+Retrieves all OCO based on provided optional parameters
+
+```js
+console.log(
+  await client.allOrdersOCO({
+    timestamp: 1565245913483,
+  }),
+)
+```
+
+| Param      | Type    | Required | Default | Description                                               |
+|------------|---------|----------|---------|-----------------------------------------------------------|
+| timestamp  | Number  | true     |         |                                                           |
+| startTime  | Number  | false    |         |                                                           |
+| endTime    | Number  | false    |         |                                                           |
+| limit      | Integer | false    | `500`   | Max `1000`                                                |
+| recvWindow | Number  | false    |         | The value cannot be greater than 60000                    |
+| formId     | Number  | false    |         | If supplied, neither startTime or endTime can be provided |
+
+<details>
+<summary>Output</summary>
+
+```js
+;[
+  {
+    "orderListId": 29,
+    "contingencyType": "OCO",
+    "listStatusType": "EXEC_STARTED",
+    "listOrderStatus": "EXECUTING",
+    "listClientOrderId": "amEEAXryFzFwYF1FeRpUoZ",
+    "transactionTime": 1565245913483,
+    "symbol": "LTCBTC",
+    "orders": [
+      {
+        "symbol": "LTCBTC",
+        "orderId": 4,
+        "clientOrderId": "oD7aesZqjEGlZrbtRpy5zB"
+      },
+      {
+        "symbol": "LTCBTC",
+        "orderId": 5,
+        "clientOrderId": "Jr1h6xirOxgeJOUuYQS7V3"
+      }
+    ]
+  },
+  {
+    "orderListId": 28,
+    "contingencyType": "OCO",
+    "listStatusType": "EXEC_STARTED",
+    "listOrderStatus": "EXECUTING",
+    "listClientOrderId": "hG7hFNxJV6cZy3Ze4AUT4d",
+    "transactionTime": 1565245913407,
+    "symbol": "LTCBTC",
+    "orders": [
+      {
+        "symbol": "LTCBTC",
+        "orderId": 2,
+        "clientOrderId": "j6lFOfbmFMRjTYA7rRJ0LP"
+      },
+      {
+        "symbol": "LTCBTC",
+        "orderId": 3,
+        "clientOrderId": "z0KCjOdditiLS5ekAFtK81"
+      }
+    ]
+  }
+]
+```
+
+</details>
+
 
 #### accountInfo
 
@@ -1683,17 +1798,14 @@ const clean = await client.ws.user(msg => {
 })
 ```
 
-Live user messages data feed on margin wallet.
-
-**Requires authentication**
+There is also two equivalent functions to query either the margin or futures wallet:
 
 ```js
-const clean = await client.ws.marginUser(msg => {
-  console.log(msg)
-})
+client.ws.marginUser()
+client.ws.futuresUser()
 ```
 
-Note that this methods returns a promise which will resolve the `clean` callback.
+Note that these methods all return a promise which will resolve the `clean` callback.
 
 <details>
 <summary>Output</summary>

@@ -171,8 +171,10 @@ declare module 'binance-api-node' {
         myTrades(options: { symbol: string, limit?: number, fromId?: number, useServerTime?: boolean }): Promise<MyTrade[]>;
         getOrder(options: { symbol: string; orderId: number, useServerTime?: boolean }): Promise<QueryOrderResult>;
         cancelOrder(options: { symbol: string; orderId: number, useServerTime?: boolean }): Promise<CancelOrderResult>;
+        cancelOpenOrders(options: { symbol: string, useServerTime?: boolean }): Promise<CancelOrderResult[]>;
         openOrders(options: { symbol?: string, useServerTime?: boolean }): Promise<QueryOrderResult[]>;
         allOrders(options: { symbol?: string, useServerTime?: boolean }): Promise<QueryOrderResult[]>;
+        allOrdersOCO(options: { timestamp: number, fromId?: number, startTime?: number, endTime?: number, limit?: number, recvWindow: number }): Promise<QueryOrderResult[]>;
         dailyStats(options?: { symbol: string }): Promise<DailyStatsResult | DailyStatsResult[]>;
         candles(options: CandlesOptions): Promise<CandleChartResult[]>;
         tradesHistory(options: { symbol: string, limit?: number, fromId?: number }): Promise<TradeResult[]>;
@@ -198,7 +200,6 @@ declare module 'binance-api-node' {
         futuresCancelOrder(options: { symbol: string; orderId: number, useServerTime?: boolean }): Promise<CancelOrderResult>;
         futuresOpenOrders(options: { symbol?: string, useServerTime?: boolean }): Promise<QueryOrderResult>;
         futuresPositionRisk(options?: { recvWindow: number }): Promise<PositionRiskResult[]>;
-
     }
 
     export interface HttpError extends Error {
@@ -214,11 +215,13 @@ declare module 'binance-api-node' {
         candles: (pair: string | string[], period: string, callback: (ticker: Candle) => void) => ReconnectingWebSocketHandler;
         trades: (pairs: string | string[], callback: (trade: Trade) => void) => ReconnectingWebSocketHandler;
         aggTrades: (pairs: string | string[], callback: (trade: Trade) => void) => ReconnectingWebSocketHandler;
+
         user: (callback: (msg: OutboundAccountInfo | ExecutionReport) => void) => Function;
         marginUser: (callback: (msg: OutboundAccountInfo | ExecutionReport) => void) => Function;
+        futuresUser: (callback: (msg: OutboundAccountInfo | ExecutionReport) => void) => Function;
     }
 
-    export type ReconnectingWebSocketHandler = (options?: {keepClosed: boolean, fastClose: boolean, delay: number}) => void
+    export type ReconnectingWebSocketHandler = (options?: { keepClosed: boolean, fastClose: boolean, delay: number }) => void
 
     export enum CandleChartInterval {
         ONE_MINUTE = '1m',
@@ -382,14 +385,14 @@ declare module 'binance-api-node' {
         useServerTime?: boolean;
     }
 
-    interface OrderFill {
+    export interface OrderFill {
         price: string;
         qty: string;
         commission: string;
         commissionAsset: string;
     }
 
-    interface Order {
+    export interface Order {
         clientOrderId: string;
         cummulativeQuoteQty: string,
         executedQty: string;
@@ -408,7 +411,7 @@ declare module 'binance-api-node' {
         fills?: OrderFill[];
     }
 
-    interface OcoOrder {
+    export interface OcoOrder {
         orderListId: number;
         contingencyType: ContingencyType;
         listStatusType: ListStatusType;
@@ -468,7 +471,7 @@ declare module 'binance-api-node' {
         | 'executionReport'
         | 'account';
 
-    interface Depth {
+    export interface Depth {
         eventType: string;
         eventTime: number;
         symbol: string;
@@ -478,24 +481,24 @@ declare module 'binance-api-node' {
         askDepth: BidDepth[];
     }
 
-    interface BidDepth {
+    export interface BidDepth {
         price: string;
         quantity: string;
     }
 
-    interface PartialDepth {
+    export interface PartialDepth {
         symbol: string;
         level: number;
         bids: Bid[];
         asks: Bid[];
     }
 
-    interface Bid {
+    export interface Bid {
         price: string;
         quantity: string;
     }
 
-    interface Ticker {
+    export interface Ticker {
         eventType: string;
         eventTime: number;
         symbol: string;
@@ -521,7 +524,7 @@ declare module 'binance-api-node' {
         totalTrades: number;
     }
 
-    interface Candle {
+    export interface Candle {
         eventType: string;
         eventTime: number;
         symbol: string;
@@ -542,7 +545,7 @@ declare module 'binance-api-node' {
         quoteBuyVolume: string;
     }
 
-    interface Trade {
+    export interface Trade {
         eventType: string;
         eventTime: number;
         symbol: string;
@@ -553,19 +556,19 @@ declare module 'binance-api-node' {
         tradeId: number;
     }
 
-    interface Message {
+    export interface Message {
         eventType: EventType;
         eventTime: number;
     }
 
-    interface Balances {
+    export interface Balances {
         [key: string]: {
             available: string;
             locked: string;
         };
     }
 
-    interface OutboundAccountInfo extends Message {
+    export interface OutboundAccountInfo extends Message {
         balances: Balances;
         makerCommissionRate: number;
         takerCommissionRate: number;
@@ -577,7 +580,7 @@ declare module 'binance-api-node' {
         lastAccountUpdate: number;
     }
 
-    interface ExecutionReport extends Message {
+    export interface ExecutionReport extends Message {
         symbol: string;
         newClientOrderId: string;
         originalClientOrderId: string;
@@ -613,8 +616,9 @@ declare module 'binance-api-node' {
         isBestMatch: boolean;
     }
 
-    interface MyTrade {
+    export interface MyTrade {
         id: number;
+        symbol: string;
         orderId: number;
         orderListId: number;
         price: string;
@@ -628,7 +632,7 @@ declare module 'binance-api-node' {
         isBestMatch: boolean;
     }
 
-    interface QueryOrderResult {
+    export interface QueryOrderResult {
         clientOrderId: string;
         cummulativeQuoteQty: string,
         executedQty: string;
@@ -647,7 +651,7 @@ declare module 'binance-api-node' {
         updateTime: number;
     }
 
-    interface CancelOrderResult {
+    export interface CancelOrderResult {
         symbol: string;
         origClientOrderId: string;
         orderId: number;
@@ -704,7 +708,7 @@ declare module 'binance-api-node' {
         baseAssetVolume: string;
         quoteAssetVolume: string;
     }
-    
+
     export interface MarkPriceResult {
         symbol: string;
         markPrice: string;
