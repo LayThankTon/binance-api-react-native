@@ -252,6 +252,15 @@ const aggTrades = (payload, cb) => aggTradesInternal(payload, cb)
 const trades = (payload, cb) => tradesInternal(payload, cb)
 
 const userTransforms = {
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#balance-update
+  balanceUpdate: m => ({
+    asset: m.a,
+    balanceDelta: m.d,
+    clearTime: m.T,
+    eventTime: m.E,
+    eventType: 'balanceUpdate',
+  }),
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
   outboundAccountInfo: m => ({
     eventType: 'account',
     eventTime: m.E,
@@ -268,6 +277,14 @@ const userTransforms = {
       return out
     }, {}),
   }),
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
+  outboundAccountPosition: m => ({
+    balances: m.B.map(({a, f, l}) => ({asset: a, free: f, locked: l})),
+    eventTime: m.E,
+    eventType: 'outboundAccountPosition',
+    lastAccountUpdate: m.u,
+  }),
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#order-update
   executionReport: m => ({
     eventType: 'executionReport',
     eventTime: m.E,
@@ -296,6 +313,9 @@ const userTransforms = {
     isBuyerMaker: m.m,
     creationTime: m.O,
     totalQuoteTradeQuantity: m.Z,
+    orderListId: m.g,
+    quoteOrderQuantity: m.Q,
+    lastQuoteTransacted: m.Y,
   }),
 }
 

@@ -97,6 +97,12 @@ test('[REST] prices', async t => {
   t.truthy(prices.ETHBTC)
 })
 
+test('[REST] individual price', async t => {
+  const prices = await client.prices({ symbol: 'ETHUSDT' })
+  t.truthy(prices)
+  t.truthy(prices.ETHUSDT)
+})
+
 test('[REST] avgPrice', async t => {
   const res = await client.avgPrice({ symbol: 'ETHBTC' })
   t.truthy(res)
@@ -236,7 +242,16 @@ test('[WS] candles', t => {
 test('[WS] trades', t => {
   return new Promise(resolve => {
     client.ws.trades(['BNBBTC', 'ETHBTC', 'BNTBTC'], trade => {
-      checkFields(t, trade, ['eventType', 'tradeId', 'tradeTime', 'quantity', 'price', 'symbol', 'buyerOrderId', 'sellerOrderId'])
+      checkFields(t, trade, [
+        'eventType',
+        'tradeId',
+        'tradeTime',
+        'quantity',
+        'price',
+        'symbol',
+        'buyerOrderId',
+        'sellerOrderId',
+      ])
       resolve()
     })
   })
@@ -245,7 +260,16 @@ test('[WS] trades', t => {
 test('[WS] aggregate trades', t => {
   return new Promise(resolve => {
     client.ws.aggTrades(['BNBBTC', 'ETHBTC', 'BNTBTC'], trade => {
-      checkFields(t, trade, ['eventType', 'aggId', 'timestamp', 'quantity', 'price', 'symbol', 'firstId', 'lastId'])
+      checkFields(t, trade, [
+        'eventType',
+        'aggId',
+        'timestamp',
+        'quantity',
+        'price',
+        'symbol',
+        'firstId',
+        'lastId',
+      ])
       resolve()
     })
   })
@@ -344,6 +368,8 @@ test('[WS] userEvents', t => {
     m: false,
     M: false,
     O: 1499405658657,
+    Q: 0,
+    Y: 0,
     Z: '0.00000000',
   }
 
@@ -376,6 +402,9 @@ test('[WS] userEvents', t => {
       isBuyerMaker: false,
       creationTime: 1499405658657,
       totalQuoteTradeQuantity: '0.00000000',
+      lastQuoteTransacted: 0,
+      orderListId: -1,
+      quoteOrderQuantity: 0,
     })
   })({ data: JSON.stringify(orderPayload) })
 
@@ -409,6 +438,8 @@ test('[WS] userEvents', t => {
     m: false,
     M: true,
     O: 1499405658657,
+    Q: 0,
+    Y: 0,
     Z: '2.30570761',
   }
 
@@ -441,6 +472,9 @@ test('[WS] userEvents', t => {
       isBuyerMaker: false,
       creationTime: 1499405658657,
       totalQuoteTradeQuantity: '2.30570761',
+      lastQuoteTransacted: 0,
+      orderListId: -1,
+      quoteOrderQuantity: 0,
     })
   })({ data: JSON.stringify(tradePayload) })
 
