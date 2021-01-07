@@ -9,6 +9,8 @@ var _cryptoJs = _interopRequireDefault(require("crypto-js"));
 
 var _lodash = _interopRequireDefault(require("lodash.zipobject"));
 
+require("isomorphic-fetch");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
@@ -312,7 +314,7 @@ var _default = function _default(opts) {
       return _candles(pubCall, payload);
     },
     trades: function trades(payload) {
-      return checkParams('trades', payload, ['symbol']) && pubCall('/api/v1/trades', payload);
+      return checkParams('trades', payload, ['symbol']) && pubCall('/api/v3/trades', payload);
     },
     tradesHistory: function tradesHistory(payload) {
       return checkParams('tradesHitory', payload, ['symbol']) && kCall('/api/v3/historicalTrades', payload);
@@ -320,9 +322,9 @@ var _default = function _default(opts) {
     dailyStats: function dailyStats(payload) {
       return pubCall('/api/v3/ticker/24hr', payload);
     },
-    prices: function prices() {
-      return pubCall('api/v3/ticker/price').then(function (r) {
-        return r.reduce(function (out, cur) {
+    prices: function prices(payload) {
+      return pubCall('/api/v3/ticker/price', payload).then(function (r) {
+        return (Array.isArray(r) ? r : [r]).reduce(function (out, cur) {
           return out[cur.symbol] = cur.price, out;
         }, {});
       });
@@ -331,8 +333,8 @@ var _default = function _default(opts) {
       return pubCall('/api/v3/avgPrice', payload);
     },
     allBookTickers: function allBookTickers() {
-      return pubCall('api/v3/ticker/bookTicker').then(function (r) {
-        return r.reduce(function (out, cur) {
+      return pubCall('/api/v3/ticker/bookTicker').then(function (r) {
+        return (Array.isArray(r) ? r : [r]).reduce(function (out, cur) {
           return out[cur.symbol] = cur, out;
         }, {});
       });
@@ -366,11 +368,17 @@ var _default = function _default(opts) {
     cancelOrder: function cancelOrder(payload) {
       return privCall('/api/v3/order', payload, 'DELETE');
     },
+    cancelOpenOrders: function cancelOpenOrders(payload) {
+      return privCall('/api/v3/openOrders', payload, 'DELETE');
+    },
     openOrders: function openOrders(payload) {
       return privCall('/api/v3/openOrders', payload);
     },
     allOrders: function allOrders(payload) {
       return privCall('/api/v3/allOrders', payload);
+    },
+    allOrdersOCO: function allOrdersOCO(payload) {
+      return privCall('/api/v3/allOrderList', payload);
     },
     accountInfo: function accountInfo(payload) {
       return privCall('/api/v3/account', payload);
@@ -395,6 +403,12 @@ var _default = function _default(opts) {
     },
     assetDetail: function assetDetail(payload) {
       return privCall('/wapi/v3/assetDetail.html', payload);
+    },
+    capitalConfigs: function capitalConfigs() {
+      return privCall('/sapi/v1/capital/config/getall');
+    },
+    capitalDepositAddress: function capitalDepositAddress(payload) {
+      return privCall('/sapi/v1/capital/deposit/address', payload);
     },
     getDataStream: function getDataStream() {
       return privCall('/api/v3/userDataStream', null, 'POST', true);
@@ -477,14 +491,14 @@ var _default = function _default(opts) {
     },
     futuresPrices: function futuresPrices() {
       return pubCall('/fapi/v1/ticker/price').then(function (r) {
-        return r.reduce(function (out, cur) {
+        return (Array.isArray(r) ? r : [r]).reduce(function (out, cur) {
           return out[cur.symbol] = cur.price, out;
         }, {});
       });
     },
     futuresAllBookTickers: function futuresAllBookTickers() {
       return pubCall('/fapi/v1/ticker/bookTicker').then(function (r) {
-        return r.reduce(function (out, cur) {
+        return (Array.isArray(r) ? r : [r]).reduce(function (out, cur) {
           return out[cur.symbol] = cur, out;
         }, {});
       });
@@ -503,6 +517,9 @@ var _default = function _default(opts) {
     },
     futuresPositionRisk: function futuresPositionRisk(payload) {
       return privCall('/fapi/v1/positionRisk', payload);
+    },
+    futuresAccountBalance: function futuresAccountBalance(payload) {
+      return privCall('/fapi/v2/balance', payload);
     }
   };
 };

@@ -1,21 +1,13 @@
-import ws from 'ws'
-import ReconnectingWebSocket from 'reconnecting-websocket'
+import ReconnectingWebSocket from 'react-native-reconnecting-websocket'
+//https://www.npmjs.com/package/react-native-reconnecting-websocket
+//https://github.com/joewalnes/reconnecting-websocket
+//https://github.com/facebook/react-native/blob/master/Libraries/WebSocket/WebSocket.js
 
 export default url => {
   const rws = new ReconnectingWebSocket(url, [], {
-    WebSocket: ws,
-    connectionTimeout: 4e3,
-    debug: false,
-    maxReconnectionDelay: 10e3,
-    maxRetries: Infinity,
-    minReconnectionDelay: 4e3,
+    timeoutInterval: 4000,
+    maxReconnectInterval: 10000,
+    reconnectInterval: 4000,
   })
-
-  const pong = () => rws._ws.pong(() => null)
-
-  rws.addEventListener('open', () => {
-    rws._ws.on('ping', pong)
-  })
-
   return rws
 }

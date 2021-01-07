@@ -13,6 +13,26 @@ var _openWebsocket = _interopRequireDefault(require("./open-websocket"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _iterableToArrayLimit(arr, i) { if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return; var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(n); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _iterableToArray(iter) { if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToArray(arr); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
+
 function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
 
 function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
@@ -24,6 +44,7 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 var BASE = 'wss://stream.binance.com:9443/ws';
+var FUTURES = 'wss://fstream.binance.com/ws';
 
 var depth = function depth(payload, cb) {
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
@@ -325,6 +346,17 @@ var trades = function trades(payload, cb) {
 };
 
 var userTransforms = {
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#balance-update
+  balanceUpdate: function balanceUpdate(m) {
+    return {
+      asset: m.a,
+      balanceDelta: m.d,
+      clearTime: m.T,
+      eventTime: m.E,
+      eventType: 'balanceUpdate'
+    };
+  },
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
   outboundAccountInfo: function outboundAccountInfo(m) {
     return {
       eventType: 'account',
@@ -346,6 +378,25 @@ var userTransforms = {
       }, {})
     };
   },
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#account-update
+  outboundAccountPosition: function outboundAccountPosition(m) {
+    return {
+      balances: m.B.map(function (_ref2) {
+        var a = _ref2.a,
+            f = _ref2.f,
+            l = _ref2.l;
+        return {
+          asset: a,
+          free: f,
+          locked: l
+        };
+      }),
+      eventTime: m.E,
+      eventType: 'outboundAccountPosition',
+      lastAccountUpdate: m.u
+    };
+  },
+  // https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md#order-update
   executionReport: function executionReport(m) {
     return {
       eventType: 'executionReport',
@@ -374,7 +425,10 @@ var userTransforms = {
       isOrderWorking: m.w,
       isBuyerMaker: m.m,
       creationTime: m.O,
-      totalQuoteTradeQuantity: m.Z
+      totalQuoteTradeQuantity: m.Z,
+      orderListId: m.g,
+      quoteOrderQuantity: m.Q,
+      lastQuoteTransacted: m.Y
     };
   }
 };
@@ -392,6 +446,19 @@ var userEventHandler = function userEventHandler(cb) {
 };
 
 exports.userEventHandler = userEventHandler;
+var STREAM_METHODS = ['get', 'keep', 'close'];
+
+var capitalize = function capitalize(str, check) {
+  return check ? "".concat(str[0].toUpperCase()).concat(str.slice(1)) : str;
+};
+
+var getStreamMethods = function getStreamMethods(opts) {
+  var variator = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '';
+  var methods = (0, _httpClient.default)(opts);
+  return STREAM_METHODS.reduce(function (acc, key) {
+    return [].concat(_toConsumableArray(acc), [methods["".concat(variator).concat(capitalize("".concat(key, "DataStream"), !!variator))]]);
+  }, []);
+};
 
 var keepStreamAlive = function keepStreamAlive(method, listenKey) {
   return method({
@@ -401,12 +468,14 @@ var keepStreamAlive = function keepStreamAlive(method, listenKey) {
 
 exports.keepStreamAlive = keepStreamAlive;
 
-var user = function user(opts, margin) {
+var user = function user(opts, variator) {
   return function (cb) {
-    var methods = (0, _httpClient.default)(opts);
-    var getDataStream = margin ? methods.marginGetDataStream : methods.getDataStream;
-    var keepDataStream = margin ? methods.marginKeepDataStream : methods.keepDataStream;
-    var closeDataStream = margin ? methods.marginCloseDataStream : methods.closeDataStream;
+    var _getStreamMethods = getStreamMethods(opts, variator),
+        _getStreamMethods2 = _slicedToArray(_getStreamMethods, 3),
+        getDataStream = _getStreamMethods2[0],
+        keepDataStream = _getStreamMethods2[1],
+        closeDataStream = _getStreamMethods2[2];
+
     var currentListenKey = null;
     var int = null;
     var w = null;
@@ -448,9 +517,9 @@ var user = function user(opts, margin) {
     };
 
     var makeStream = function makeStream(isReconnecting) {
-      return getDataStream().then(function (_ref2) {
-        var listenKey = _ref2.listenKey;
-        w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(listenKey));
+      return getDataStream().then(function (_ref3) {
+        var listenKey = _ref3.listenKey;
+        w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(listenKey));
 
         w.onmessage = function (msg) {
           return userEventHandler(cb)(msg);
@@ -489,7 +558,8 @@ var _default = function _default(opts) {
     ticker: ticker,
     allTickers: allTickers,
     user: user(opts),
-    marginUser: user(opts, true)
+    marginUser: user(opts, 'margin'),
+    futuresUser: user(opts, 'futures')
   };
 };
 
