@@ -8,6 +8,11 @@ const FUTURES = 'https://fapi.binance.com'
 
 const defaultGetTime = () => Date.now()
 
+const info = {
+  spot: {},
+  futures: {}
+}
+
 /**
  * Build query string for uri encoded url based on json object
  */
@@ -19,10 +24,40 @@ const makeQueryString = q =>
     : ''
 
 /**
+ * Get API limits info from headers
+ */
+const headersMapping = {
+  'x-mbx-used-weight-1m': 'usedWeigh1m',
+  'x-mbx-order-count-10s': 'orderCount10s',
+  'x-mbx-order-count-1m': 'orderCount1m',
+  'x-mbx-order-count-1h': 'orderCount1h',
+  'x-response-time': 'responseTime',
+}
+
+const responseHandler = res => {
+  if (!res.headers || !res.url) {
+    return
+  }
+
+  const marketName = res.url.includes(FUTURES) ? 'futures' : 'spot'
+
+  Object.keys(headersMapping).forEach(key => {
+    const outKey = headersMapping[key]
+
+    if (res.headers.has(key)) {
+      info[marketName][outKey] = res.headers.get(key)
+    }
+  })
+}
+
+/**
  * Finalize API response
  */
 const sendResult = call =>
   call.then(res => {
+    // Get API limits info from headers
+    responseHandler(res)
+
     // If response is ok, we can safely assume it is valid JSON
     if (res.ok) {
       return res.json()
@@ -134,6 +169,7 @@ const privateCall = ({ apiKey, apiSecret, endpoints, getTime = defaultGetTime, p
     if (data) {
       delete data.useServerTime
     }
+
     const signature = CryptoJS.algo.HMAC
     .create(CryptoJS.algo.SHA256, apiSecret)
     .update(makeQueryString({ ...data, timestamp }).substr(1))
@@ -190,8 +226,14 @@ const order = (privCall, payload = {}, url) => {
       ? { timeInForce: 'GTC', ...payload }
       : payload
 
+  const requires = ['symbol', 'side']
+
+  if (!(newPayload.type === 'MARKET' && newPayload.quoteOrderQty)) {
+    requires.push('quantity')
+  }
+
   return (
-    checkParams('order', newPayload, ['symbol', 'side', 'quantity']) &&
+    checkParams('order', newPayload, requires) &&
     privCall(url, { type: 'LIMIT', ...newPayload }, 'POST')
   )
 }
@@ -246,6 +288,7 @@ export default opts => {
   const kCall = keyCall({ ...opts, pubCall })
 
   return {
+    getInfo: () => info,
     ping: () => pubCall('/api/v3/ping').then(() => true),
     time: () => pubCall('/api/v3/time').then(r => r.serverTime),
     exchangeInfo: () => pubCall('/api/v3/exchangeInfo'),
@@ -329,6 +372,7 @@ export default opts => {
     marginOpenOrders: payload => privCall('/sapi/v1/margin/openOrders', payload),
     marginAccountInfo: payload => privCall('/sapi/v1/margin/account', payload),
     marginMyTrades: payload => privCall('/sapi/v1/margin/myTrades', payload),
+    marginRepay: payload => privCall('/sapi/v1/margin/repay', payload, 'POST'),
 
     futuresPing: () => pubCall('/fapi/v1/ping').then(() => true),
     futuresTime: () => pubCall('/fapi/v1/time').then(r => r.serverTime),
@@ -353,9 +397,19 @@ export default opts => {
       checkParams('fundingRate', payload, ['symbol']) && pubCall('/fapi/v1/fundingRate', payload),
 
     futuresOrder: payload => order(privCall, payload, '/fapi/v1/order'),
+    futuresGetOrder: payload => privCall('/fapi/v1/order', payload),
     futuresCancelOrder: payload => privCall('/fapi/v1/order', payload, 'DELETE'),
     futuresOpenOrders: payload => privCall('/fapi/v1/openOrders', payload),
-    futuresPositionRisk: payload => privCall('/fapi/v1/positionRisk', payload),
+    futuresAllOrders: payload => privCall('/fapi/v1/allOrders', payload),
+    futuresPositionRisk: payload => privCall('/fapi/v2/positionRisk', payload),
     futuresAccountBalance: payload => privCall('/fapi/v2/balance', payload),
+    futuresUserTrades: payload => privCall('/fapi/v1/userTrades', payload),
+    futuresPositionMode: payload => privCall('/fapi/v1/positionSide/dual', payload),
+    futuresPositionModeChange: payload => privCall('/fapi/v1/positionSide/dual', payload, 'POST'),
+    futuresLeverage: payload => privCall('/fapi/v1/leverage', payload, 'POST'),
+    futuresMarginType: payload => privCall('/fapi/v1/marginType', payload, 'POST'),
+    futuresPositionMargin: payload => privCall('/fapi/v1/positionMargin', payload, 'POST'),
+    futuresMarginHistory: payload => privCall('/fapi/v1/positionMargin/history', payload),
+    futuresIncome: payload => privCall('/fapi/v1/income', payload),
   }
 }
