@@ -40,8 +40,8 @@ const depth = (payload, cb, transform = true, variator) => {
     return w
   })
 
-  return options =>
-    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return () =>
+    cache.forEach(w => w.close(1000, 'Close handle was called'))
 }
 
 const partialDepthTransform = (symbol, level, m) => ({
@@ -77,8 +77,8 @@ const partialDepth = (payload, cb, transform = true, variator) => {
     return w
   })
 
-  return options =>
-    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return () =>
+    cache.forEach(w => w.close(1000, 'Close handle was called'))
 }
 
 const candles = (payload, interval, cb, transform = true, variator) => {
@@ -134,8 +134,8 @@ const candles = (payload, interval, cb, transform = true, variator) => {
     return w
   })
 
-  return options =>
-    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return () =>
+    cache.forEach(w => w.close(1000, 'Close handle was called'))
 }
 
 const tickerTransform = m => ({
@@ -197,8 +197,8 @@ const ticker = (payload, cb, transform = true, variator) => {
     return w
   })
 
-  return options =>
-    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return () =>
+    cache.forEach(w => w.close(1000, 'Close handle was called'))
 }
 
 const allTickers = (cb, transform = true, variator) => {
@@ -209,7 +209,7 @@ const allTickers = (cb, transform = true, variator) => {
     cb(transform ? (variator === 'futures' ? arr.map(m => futuresTickerTransform(m)) : arr.map(m => tickerTransform(m))) : arr)
   }
 
-  return options => w.close(1000, 'Close handle was called', { keepClosed: true, ...options })
+  return () => w.close(1000, 'Close handle was called')
 }
 
 const aggTradesTransform = m => ({
@@ -251,8 +251,8 @@ const aggTrades = (payload, cb, transform = true, variator) => {
     return w
   })
 
-  return options =>
-    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return () =>
+    cache.forEach(w => w.close(1000, 'Close handle was called'))
 }
 
 const tradesTransform = m => ({
@@ -281,8 +281,8 @@ const trades = (payload, cb, transform = true) => {
     return w
   })
 
-  return options =>
-    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+  return () =>
+    cache.forEach(w => w.close(1000, 'Close handle was called'))
 }
 
 const userTransforms = {
@@ -470,7 +470,7 @@ const user = (opts, variator) => (cb, transform) => {
   const keepAlive = isReconnecting => {
     if (currentListenKey) {
       keepStreamAlive(keepDataStream, currentListenKey).catch(() => {
-        closeStream({}, true)
+        closeStream(true)
 
         if (isReconnecting) {
           setTimeout(() => makeStream(true), 30e3)
@@ -481,7 +481,7 @@ const user = (opts, variator) => (cb, transform) => {
     }
   }
 
-  const closeStream = (options, catchErrors) => {
+  const closeStream = (catchErrors) => {
     if (currentListenKey) {
       clearInterval(int)
 
@@ -491,7 +491,7 @@ const user = (opts, variator) => (cb, transform) => {
         p.catch(f => f)
       }
 
-      w.close(1000, 'Close handle was called', { keepClosed: true, ...options })
+      w.close(1000, 'Close handle was called')
       currentListenKey = null
     }
   }
@@ -508,7 +508,7 @@ const user = (opts, variator) => (cb, transform) => {
 
         keepAlive(true)
 
-        return options => closeStream(options)
+        return () => closeStream(false)
       })
       .catch(err => {
         if (isReconnecting) {

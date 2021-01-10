@@ -46,33 +46,49 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 var BASE = 'wss://stream.binance.com:9443/ws';
 var FUTURES = 'wss://fstream.binance.com/ws';
 
+var depthTransform = function depthTransform(m) {
+  return {
+    eventType: m.e,
+    eventTime: m.E,
+    symbol: m.s,
+    firstUpdateId: m.U,
+    finalUpdateId: m.u,
+    bidDepth: m.b.map(function (b) {
+      return (0, _lodash.default)(['price', 'quantity'], b);
+    }),
+    askDepth: m.a.map(function (a) {
+      return (0, _lodash.default)(['price', 'quantity'], a);
+    })
+  };
+};
+
+var futuresDepthTransform = function futuresDepthTransform(m) {
+  return {
+    eventType: m.e,
+    eventTime: m.E,
+    transactionTime: m.T,
+    symbol: m.s,
+    firstUpdateId: m.U,
+    finalUpdateId: m.u,
+    prevFinalUpdateId: m.pu,
+    bidDepth: m.b.map(function (b) {
+      return (0, _lodash.default)(['price', 'quantity'], b);
+    }),
+    askDepth: m.a.map(function (a) {
+      return (0, _lodash.default)(['price', 'quantity'], a);
+    })
+  };
+};
+
 var depth = function depth(payload, cb) {
+  var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+  var variator = arguments.length > 3 ? arguments[3] : undefined;
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@depth"));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@depth"));
 
     w.onmessage = function (msg) {
-      var _JSON$parse = JSON.parse(msg.data),
-          eventType = _JSON$parse.e,
-          eventTime = _JSON$parse.E,
-          symbol = _JSON$parse.s,
-          firstUpdateId = _JSON$parse.U,
-          finalUpdateId = _JSON$parse.u,
-          bidDepth = _JSON$parse.b,
-          askDepth = _JSON$parse.a;
-
-      cb({
-        eventType: eventType,
-        eventTime: eventTime,
-        symbol: symbol,
-        firstUpdateId: firstUpdateId,
-        finalUpdateId: finalUpdateId,
-        bidDepth: bidDepth.map(function (b) {
-          return (0, _lodash.default)(['price', 'quantity'], b);
-        }),
-        askDepth: askDepth.map(function (a) {
-          return (0, _lodash.default)(['price', 'quantity'], a);
-        })
-      });
+      var obj = JSON.parse(msg.data);
+      cb(transform ? variator === 'futures' ? futuresDepthTransform(obj) : depthTransform(obj) : obj);
     };
 
     return w;
@@ -86,29 +102,50 @@ var depth = function depth(payload, cb) {
   };
 };
 
+var partialDepthTransform = function partialDepthTransform(symbol, level, m) {
+  return {
+    symbol: symbol,
+    level: level,
+    lastUpdateId: m.lastUpdateId,
+    bids: m.bids.map(function (b) {
+      return (0, _lodash.default)(['price', 'quantity'], b);
+    }),
+    asks: m.asks.map(function (a) {
+      return (0, _lodash.default)(['price', 'quantity'], a);
+    })
+  };
+};
+
+var futuresPartDepthTransform = function futuresPartDepthTransform(level, m) {
+  return {
+    level: level,
+    eventType: m.e,
+    eventTime: m.E,
+    transactionTime: m.T,
+    symbol: m.s,
+    firstUpdateId: m.U,
+    finalUpdateId: m.u,
+    prevFinalUpdateId: m.pu,
+    bidDepth: m.b.map(function (b) {
+      return (0, _lodash.default)(['price', 'quantity'], b);
+    }),
+    askDepth: m.a.map(function (a) {
+      return (0, _lodash.default)(['price', 'quantity'], a);
+    })
+  };
+};
+
 var partialDepth = function partialDepth(payload, cb) {
+  var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+  var variator = arguments.length > 3 ? arguments[3] : undefined;
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (_ref) {
     var symbol = _ref.symbol,
         level = _ref.level;
-    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@depth").concat(level));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@depth").concat(level));
 
     w.onmessage = function (msg) {
-      var _JSON$parse2 = JSON.parse(msg.data),
-          lastUpdateId = _JSON$parse2.lastUpdateId,
-          bids = _JSON$parse2.bids,
-          asks = _JSON$parse2.asks;
-
-      cb({
-        symbol: symbol,
-        level: level,
-        lastUpdateId: lastUpdateId,
-        bids: bids.map(function (b) {
-          return (0, _lodash.default)(['price', 'quantity'], b);
-        }),
-        asks: asks.map(function (a) {
-          return (0, _lodash.default)(['price', 'quantity'], a);
-        })
-      });
+      var obj = JSON.parse(msg.data);
+      cb(transform ? variator === 'futures' ? futuresPartDepthTransform(level, obj) : partialDepthTransform(symbol, level, obj) : obj);
     };
 
     return w;
@@ -123,20 +160,22 @@ var partialDepth = function partialDepth(payload, cb) {
 };
 
 var candles = function candles(payload, interval, cb) {
+  var transform = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+  var variator = arguments.length > 4 ? arguments[4] : undefined;
+
   if (!interval || !cb) {
     throw new Error('Please pass a symbol, interval and callback.');
   }
 
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@kline_").concat(interval));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@kline_").concat(interval));
 
     w.onmessage = function (msg) {
-      var _JSON$parse3 = JSON.parse(msg.data),
-          eventType = _JSON$parse3.e,
-          eventTime = _JSON$parse3.E,
-          symbol = _JSON$parse3.s,
-          tick = _JSON$parse3.k;
-
+      var obj = JSON.parse(msg.data);
+      var eventType = obj.e,
+          eventTime = obj.E,
+          symbol = obj.s,
+          tick = obj.k;
       var startTime = tick.t,
           closeTime = tick.T,
           firstTradeId = tick.f,
@@ -152,7 +191,7 @@ var candles = function candles(payload, interval, cb) {
           quoteVolume = tick.q,
           buyVolume = tick.V,
           quoteBuyVolume = tick.Q;
-      cb({
+      cb(transform ? {
         eventType: eventType,
         eventTime: eventTime,
         symbol: symbol,
@@ -171,7 +210,7 @@ var candles = function candles(payload, interval, cb) {
         quoteVolume: quoteVolume,
         buyVolume: buyVolume,
         quoteBuyVolume: quoteBuyVolume
-      });
+      } : obj);
     };
 
     return w;
@@ -213,12 +252,38 @@ var tickerTransform = function tickerTransform(m) {
   };
 };
 
+var futuresTickerTransform = function futuresTickerTransform(m) {
+  return {
+    eventType: m.e,
+    eventTime: m.E,
+    symbol: m.s,
+    priceChange: m.p,
+    priceChangePercent: m.P,
+    weightedAvg: m.w,
+    curDayClose: m.c,
+    closeTradeQuantity: m.Q,
+    open: m.o,
+    high: m.h,
+    low: m.l,
+    volume: m.v,
+    volumeQuote: m.q,
+    openTime: m.O,
+    closeTime: m.C,
+    firstTradeId: m.F,
+    lastTradeId: m.L,
+    totalTrades: m.n
+  };
+};
+
 var ticker = function ticker(payload, cb) {
+  var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+  var variator = arguments.length > 3 ? arguments[3] : undefined;
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@ticker"));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@ticker"));
 
     w.onmessage = function (msg) {
-      cb(tickerTransform(JSON.parse(msg.data)));
+      var obj = JSON.parse(msg.data);
+      cb(transform ? variator === 'futures' ? futuresTickerTransform(obj) : tickerTransform(obj) : obj);
     };
 
     return w;
@@ -233,13 +298,17 @@ var ticker = function ticker(payload, cb) {
 };
 
 var allTickers = function allTickers(cb) {
-  var w = new _openWebsocket.default("".concat(BASE, "/!ticker@arr"));
+  var transform = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
+  var variator = arguments.length > 2 ? arguments[2] : undefined;
+  var w = new _openWebsocket.default("".concat(variator === 'futures' ? FUTURES : BASE, "/!ticker@arr"));
 
   w.onmessage = function (msg) {
     var arr = JSON.parse(msg.data);
-    cb(arr.map(function (m) {
+    cb(transform ? variator === 'futures' ? arr.map(function (m) {
+      return futuresTickerTransform(m);
+    }) : arr.map(function (m) {
       return tickerTransform(m);
-    }));
+    }) : arr);
   };
 
   return function (options) {
@@ -249,100 +318,94 @@ var allTickers = function allTickers(cb) {
   };
 };
 
-var aggTradesInternal = function aggTradesInternal(payload, cb) {
-  var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@aggTrade"));
-
-    w.onmessage = function (msg) {
-      var _JSON$parse4 = JSON.parse(msg.data),
-          eventType = _JSON$parse4.e,
-          eventTime = _JSON$parse4.E,
-          timestamp = _JSON$parse4.T,
-          symbol = _JSON$parse4.s,
-          price = _JSON$parse4.p,
-          quantity = _JSON$parse4.q,
-          isBuyerMaker = _JSON$parse4.m,
-          wasBestPrice = _JSON$parse4.M,
-          aggId = _JSON$parse4.a,
-          firstId = _JSON$parse4.f,
-          lastId = _JSON$parse4.l;
-
-      cb({
-        eventType: eventType,
-        eventTime: eventTime,
-        aggId: aggId,
-        price: price,
-        quantity: quantity,
-        firstId: firstId,
-        lastId: lastId,
-        timestamp: timestamp,
-        symbol: symbol,
-        isBuyerMaker: isBuyerMaker,
-        wasBestPrice: wasBestPrice
-      });
-    };
-
-    return w;
-  });
-  return function (options) {
-    return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
-    });
+var aggTradesTransform = function aggTradesTransform(m) {
+  return {
+    eventType: m.e,
+    eventTime: m.E,
+    timestamp: m.T,
+    symbol: m.s,
+    price: m.p,
+    quantity: m.q,
+    isBuyerMaker: m.m,
+    wasBestPrice: m.M,
+    aggId: m.a,
+    firstId: m.f,
+    lastId: m.l
   };
 };
 
-var tradesInternal = function tradesInternal(payload, cb) {
-  var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@trade"));
-
-    w.onmessage = function (msg) {
-      var _JSON$parse5 = JSON.parse(msg.data),
-          eventType = _JSON$parse5.e,
-          eventTime = _JSON$parse5.E,
-          tradeTime = _JSON$parse5.T,
-          symbol = _JSON$parse5.s,
-          price = _JSON$parse5.p,
-          quantity = _JSON$parse5.q,
-          isBuyerMaker = _JSON$parse5.m,
-          maker = _JSON$parse5.M,
-          tradeId = _JSON$parse5.t,
-          sellerOrderId = _JSON$parse5.a,
-          buyerOrderId = _JSON$parse5.b;
-
-      cb({
-        eventType: eventType,
-        eventTime: eventTime,
-        tradeTime: tradeTime,
-        symbol: symbol,
-        price: price,
-        quantity: quantity,
-        isBuyerMaker: isBuyerMaker,
-        maker: maker,
-        tradeId: tradeId,
-        buyerOrderId: buyerOrderId,
-        sellerOrderId: sellerOrderId
-      });
-    };
-
-    return w;
-  });
-  return function (options) {
-    return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
-    });
+var futuresAggTradesTransform = function futuresAggTradesTransform(m) {
+  return {
+    eventType: m.e,
+    eventTime: m.E,
+    symbol: m.s,
+    aggId: m.a,
+    price: m.p,
+    quantity: m.q,
+    firstId: m.f,
+    lastId: m.l,
+    timestamp: m.T,
+    isBuyerMaker: m.m
   };
 };
 
 var aggTrades = function aggTrades(payload, cb) {
-  return aggTradesInternal(payload, cb);
+  var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+  var variator = arguments.length > 3 ? arguments[3] : undefined;
+  var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@aggTrade"));
+
+    w.onmessage = function (msg) {
+      var obj = JSON.parse(msg.data);
+      cb(transform ? variator === 'futures' ? futuresAggTradesTransform(obj) : aggTradesTransform(obj) : obj);
+    };
+
+    return w;
+  });
+  return function (options) {
+    return cache.forEach(function (w) {
+      return w.close(1000, 'Close handle was called', _objectSpread({
+        keepClosed: true
+      }, options));
+    });
+  };
+};
+
+var tradesTransform = function tradesTransform(m) {
+  return {
+    eventType: m.e,
+    eventTime: m.E,
+    tradeTime: m.T,
+    symbol: m.s,
+    price: m.p,
+    quantity: m.q,
+    isBuyerMaker: m.m,
+    maker: m.M,
+    tradeId: m.t,
+    buyerOrderId: m.b,
+    sellerOrderId: m.a
+  };
 };
 
 var trades = function trades(payload, cb) {
-  return tradesInternal(payload, cb);
+  var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+  var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
+    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@trade"));
+
+    w.onmessage = function (msg) {
+      var obj = JSON.parse(msg.data);
+      cb(transform ? tradesTransform(obj) : obj);
+    };
+
+    return w;
+  });
+  return function (options) {
+    return cache.forEach(function (w) {
+      return w.close(1000, 'Close handle was called', _objectSpread({
+        keepClosed: true
+      }, options));
+    });
+  };
 };
 
 var userTransforms = {
@@ -432,14 +495,109 @@ var userTransforms = {
     };
   }
 };
+var futuresUserTransforms = {
+  // https://binance-docs.github.io/apidocs/futures/en/#event-margin-call
+  MARGIN_CALL: function MARGIN_CALL(m) {
+    return {
+      eventTime: m.E,
+      crossWalletBalance: m.cw,
+      eventType: 'MARGIN_CALL',
+      positions: m.p.reduce(function (out, cur) {
+        out[cur.a] = {
+          symbol: cur.s,
+          positionSide: cur.ps,
+          positionAmount: cur.pa,
+          marginType: cur.mt,
+          isolatedWallet: cur.iw,
+          markPrice: cur.mp,
+          unrealizedPnL: cur.up,
+          maintenanceMarginRequired: cur.mm
+        };
+        return out;
+      }, {})
+    };
+  },
+  // https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
+  ACCOUNT_UPDATE: function ACCOUNT_UPDATE(m) {
+    return {
+      eventTime: m.E,
+      transactionTime: m.T,
+      eventType: 'ACCOUNT_UPDATE',
+      eventReasonType: m.a.m,
+      balances: m.a.B.reduce(function (out, cur) {
+        out[cur.a] = {
+          asset: cur.a,
+          walletBalance: cur.wb,
+          crossWalletBalance: cur.cw
+        };
+        return out;
+      }, {}),
+      positions: m.a.P.reduce(function (out, cur) {
+        out[cur.a] = {
+          symbol: cur.s,
+          positionAmount: cur.pa,
+          entryPrice: cur.ep,
+          accumulatedRealized: cur.cr,
+          unrealizedPnL: cur.up,
+          marginType: cur.mt,
+          isolatedWallet: cur.iw,
+          positionSide: cur.ps
+        };
+        return out;
+      }, {})
+    };
+  },
+  // https://binance-docs.github.io/apidocs/futures/en/#event-order-update
+  ORDER_TRADE_UPDATE: function ORDER_TRADE_UPDATE(m) {
+    return {
+      eventType: 'ORDER_TRADE_UPDATE',
+      eventTime: m.E,
+      transactionTime: m.T,
+      symbol: m.o.s,
+      clientOrderId: m.o.c,
+      side: m.o.S,
+      orderType: m.o.o,
+      timeInForce: m.o.f,
+      quantity: m.o.q,
+      price: m.o.p,
+      averagePrice: m.o.ap,
+      stopPrice: m.o.sp,
+      executionType: m.o.x,
+      orderStatus: m.o.X,
+      orderId: m.o.i,
+      lastTradeQuantity: m.o.l,
+      totalTradeQuantity: m.o.z,
+      priceLastTrade: m.o.L,
+      commissionAsset: m.o.N,
+      commission: m.o.n,
+      orderTime: m.o.T,
+      tradeId: m.o.t,
+      bidsNotional: m.o.b,
+      asksNotional: m.o.a,
+      isMaker: m.o.m,
+      isReduceOnly: m.o.R,
+      workingType: m.o.wt,
+      originalOrderType: m.o.ot,
+      positionSide: m.o.ps,
+      closePosition: m.o.cp,
+      activationPrice: m.o.AP,
+      callbackRate: m.o.cr,
+      realizedProfit: m.o.rp
+    };
+  }
+};
 
 var userEventHandler = function userEventHandler(cb) {
+  var transform = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
+  var variator = arguments.length > 2 ? arguments[2] : undefined;
   return function (msg) {
-    var _JSON$parse6 = JSON.parse(msg.data),
-        type = _JSON$parse6.e,
-        rest = _objectWithoutProperties(_JSON$parse6, ["e"]);
+    var _JSON$parse = JSON.parse(msg.data),
+        type = _JSON$parse.e,
+        rest = _objectWithoutProperties(_JSON$parse, ["e"]);
 
-    cb(userTransforms[type] ? userTransforms[type](rest) : _objectSpread({
+    cb(variator === 'futures' ? transform && futuresUserTransforms[type] ? futuresUserTransforms[type](rest) : _objectSpread({
+      type: type
+    }, rest) : transform && userTransforms[type] ? userTransforms[type](rest) : _objectSpread({
       type: type
     }, rest));
   };
@@ -469,7 +627,7 @@ var keepStreamAlive = function keepStreamAlive(method, listenKey) {
 exports.keepStreamAlive = keepStreamAlive;
 
 var user = function user(opts, variator) {
-  return function (cb) {
+  return function (cb, transform) {
     var _getStreamMethods = getStreamMethods(opts, variator),
         _getStreamMethods2 = _slicedToArray(_getStreamMethods, 3),
         getDataStream = _getStreamMethods2[0],
@@ -522,7 +680,7 @@ var user = function user(opts, variator) {
         w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(listenKey));
 
         w.onmessage = function (msg) {
-          return userEventHandler(cb)(msg);
+          return userEventHandler(cb, transform, variator)(msg);
         };
 
         currentListenKey = listenKey;
@@ -559,6 +717,24 @@ var _default = function _default(opts) {
     allTickers: allTickers,
     user: user(opts),
     marginUser: user(opts, 'margin'),
+    futuresDepth: function futuresDepth(payload, cb, transform) {
+      return depth(payload, cb, transform, 'futures');
+    },
+    futuresPartialDepth: function futuresPartialDepth(payload, cb, transform) {
+      return partialDepth(payload, cb, transform, 'futures');
+    },
+    futuresCandles: function futuresCandles(payload, interval, cb, transform) {
+      return candles(payload, interval, cb, transform, 'futures');
+    },
+    futuresTicker: function futuresTicker(payload, cb, transform) {
+      return ticker(payload, cb, transform, 'futures');
+    },
+    futuresAllTickers: function futuresAllTickers(cb, transform) {
+      return allTickers(cb, transform, 'futures');
+    },
+    futuresAggTrades: function futuresAggTrades(payload, cb, transform) {
+      return aggTrades(payload, cb, transform, 'futures');
+    },
     futuresUser: user(opts, 'futures')
   };
 };

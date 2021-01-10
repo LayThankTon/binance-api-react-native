@@ -25,15 +25,46 @@ var FUTURES = 'https://fapi.binance.com';
 var defaultGetTime = function defaultGetTime() {
   return Date.now();
 };
+
+var info = {
+  spot: {},
+  futures: {}
+};
 /**
  * Build query string for uri encoded url based on json object
  */
-
 
 var makeQueryString = function makeQueryString(q) {
   return q ? "?".concat(Object.keys(q).map(function (k) {
     return "".concat(encodeURIComponent(k), "=").concat(encodeURIComponent(q[k]));
   }).join('&')) : '';
+};
+/**
+ * Get API limits info from headers
+ */
+
+
+var headersMapping = {
+  'x-mbx-used-weight-1m': 'usedWeigh1m',
+  'x-mbx-order-count-10s': 'orderCount10s',
+  'x-mbx-order-count-1m': 'orderCount1m',
+  'x-mbx-order-count-1h': 'orderCount1h',
+  'x-response-time': 'responseTime'
+};
+
+var responseHandler = function responseHandler(res) {
+  if (!res.headers || !res.url) {
+    return;
+  }
+
+  var marketName = res.url.includes(FUTURES) ? 'futures' : 'spot';
+  Object.keys(headersMapping).forEach(function (key) {
+    var outKey = headersMapping[key];
+
+    if (res.headers.has(key)) {
+      info[marketName][outKey] = res.headers.get(key);
+    }
+  });
 };
 /**
  * Finalize API response
@@ -42,7 +73,9 @@ var makeQueryString = function makeQueryString(q) {
 
 var sendResult = function sendResult(call) {
   return call.then(function (res) {
-    // If response is ok, we can safely assume it is valid JSON
+    // Get API limits info from headers
+    responseHandler(res); // If response is ok, we can safely assume it is valid JSON
+
     if (res.ok) {
       return res.json();
     } // Errors might come from the API itself or the proxy Binance is using.
@@ -220,7 +253,13 @@ var _order = function order(privCall) {
   var newPayload = ['LIMIT', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'].includes(payload.type) || !payload.type ? _objectSpread({
     timeInForce: 'GTC'
   }, payload) : payload;
-  return checkParams('order', newPayload, ['symbol', 'side', 'quantity']) && privCall(url, _objectSpread({
+  var requires = ['symbol', 'side'];
+
+  if (!(newPayload.type === 'MARKET' && newPayload.quoteOrderQty)) {
+    requires.push('quantity');
+  }
+
+  return checkParams('order', newPayload, requires) && privCall(url, _objectSpread({
     type: 'LIMIT'
   }, newPayload), 'POST');
 };
@@ -291,6 +330,9 @@ var _default = function _default(opts) {
     pubCall: pubCall
   }));
   return {
+    getInfo: function getInfo() {
+      return info;
+    },
     ping: function ping() {
       return pubCall('/api/v3/ping').then(function () {
         return true;
@@ -455,6 +497,9 @@ var _default = function _default(opts) {
     marginMyTrades: function marginMyTrades(payload) {
       return privCall('/sapi/v1/margin/myTrades', payload);
     },
+    marginRepay: function marginRepay(payload) {
+      return privCall('/sapi/v1/margin/repay', payload, 'POST');
+    },
     futuresPing: function futuresPing() {
       return pubCall('/fapi/v1/ping').then(function () {
         return true;
@@ -509,17 +554,47 @@ var _default = function _default(opts) {
     futuresOrder: function futuresOrder(payload) {
       return _order(privCall, payload, '/fapi/v1/order');
     },
+    futuresGetOrder: function futuresGetOrder(payload) {
+      return privCall('/fapi/v1/order', payload);
+    },
     futuresCancelOrder: function futuresCancelOrder(payload) {
       return privCall('/fapi/v1/order', payload, 'DELETE');
     },
     futuresOpenOrders: function futuresOpenOrders(payload) {
       return privCall('/fapi/v1/openOrders', payload);
     },
+    futuresAllOrders: function futuresAllOrders(payload) {
+      return privCall('/fapi/v1/allOrders', payload);
+    },
     futuresPositionRisk: function futuresPositionRisk(payload) {
-      return privCall('/fapi/v1/positionRisk', payload);
+      return privCall('/fapi/v2/positionRisk', payload);
     },
     futuresAccountBalance: function futuresAccountBalance(payload) {
       return privCall('/fapi/v2/balance', payload);
+    },
+    futuresUserTrades: function futuresUserTrades(payload) {
+      return privCall('/fapi/v1/userTrades', payload);
+    },
+    futuresPositionMode: function futuresPositionMode(payload) {
+      return privCall('/fapi/v1/positionSide/dual', payload);
+    },
+    futuresPositionModeChange: function futuresPositionModeChange(payload) {
+      return privCall('/fapi/v1/positionSide/dual', payload, 'POST');
+    },
+    futuresLeverage: function futuresLeverage(payload) {
+      return privCall('/fapi/v1/leverage', payload, 'POST');
+    },
+    futuresMarginType: function futuresMarginType(payload) {
+      return privCall('/fapi/v1/marginType', payload, 'POST');
+    },
+    futuresPositionMargin: function futuresPositionMargin(payload) {
+      return privCall('/fapi/v1/positionMargin', payload, 'POST');
+    },
+    futuresMarginHistory: function futuresMarginHistory(payload) {
+      return privCall('/fapi/v1/positionMargin/history', payload);
+    },
+    futuresIncome: function futuresIncome(payload) {
+      return privCall('/fapi/v1/income', payload);
     }
   };
 };
