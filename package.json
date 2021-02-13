@@ -1,6 +1,6 @@
 {
   "name": "ltt-binance-api-react-native",
-  "version": "0.10.19",
+  "version": "0.10.28",
   "description": "A react native API wrapper for Binance",
   "main": "dist",
   "files": [

@@ -500,6 +500,9 @@ var _default = function _default(opts) {
     marginRepay: function marginRepay(payload) {
       return privCall('/sapi/v1/margin/repay', payload, 'POST');
     },
+    marginLoan: function marginLoan(payload) {
+      return privCall('/sapi/v1/margin/loan', payload, 'POST');
+    },
     futuresPing: function futuresPing() {
       return pubCall('/fapi/v1/ping').then(function () {
         return true;

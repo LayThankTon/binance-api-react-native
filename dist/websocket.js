@@ -33,15 +33,15 @@ function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) return _arrayLikeToAr
 
 function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 
-function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
-
-function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
-
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
 
 function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
+
+function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
 
 var BASE = 'wss://stream.binance.com:9443/ws';
 var FUTURES = 'wss://fstream.binance.com/ws';
@@ -93,11 +93,9 @@ var depth = function depth(payload, cb) {
 
     return w;
   });
-  return function (options) {
+  return function () {
     return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
+      return w.close(1000, 'Close handle was called');
     });
   };
 };
@@ -150,11 +148,9 @@ var partialDepth = function partialDepth(payload, cb) {
 
     return w;
   });
-  return function (options) {
+  return function () {
     return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
+      return w.close(1000, 'Close handle was called');
     });
   };
 };
@@ -215,11 +211,9 @@ var candles = function candles(payload, interval, cb) {
 
     return w;
   });
-  return function (options) {
+  return function () {
     return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
+      return w.close(1000, 'Close handle was called');
     });
   };
 };
@@ -288,11 +282,9 @@ var ticker = function ticker(payload, cb) {
 
     return w;
   });
-  return function (options) {
+  return function () {
     return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
+      return w.close(1000, 'Close handle was called');
     });
   };
 };
@@ -311,10 +303,8 @@ var allTickers = function allTickers(cb) {
     }) : arr);
   };
 
-  return function (options) {
-    return w.close(1000, 'Close handle was called', _objectSpread({
-      keepClosed: true
-    }, options));
+  return function () {
+    return w.close(1000, 'Close handle was called');
   };
 };
 
@@ -362,11 +352,9 @@ var aggTrades = function aggTrades(payload, cb) {
 
     return w;
   });
-  return function (options) {
+  return function () {
     return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
+      return w.close(1000, 'Close handle was called');
     });
   };
 };
@@ -399,11 +387,9 @@ var trades = function trades(payload, cb) {
 
     return w;
   });
-  return function (options) {
+  return function () {
     return cache.forEach(function (w) {
-      return w.close(1000, 'Close handle was called', _objectSpread({
-        keepClosed: true
-      }, options));
+      return w.close(1000, 'Close handle was called');
     });
   };
 };
@@ -641,7 +627,7 @@ var user = function user(opts, variator) {
     var keepAlive = function keepAlive(isReconnecting) {
       if (currentListenKey) {
         keepStreamAlive(keepDataStream, currentListenKey).catch(function () {
-          closeStream({}, true);
+          closeStream(true);
 
           if (isReconnecting) {
             setTimeout(function () {
@@ -654,7 +640,7 @@ var user = function user(opts, variator) {
       }
     };
 
-    var closeStream = function closeStream(options, catchErrors) {
+    var closeStream = function closeStream(catchErrors) {
       if (currentListenKey) {
         clearInterval(int);
         var p = closeDataStream({
@@ -667,9 +653,7 @@ var user = function user(opts, variator) {
           });
         }
 
-        w.close(1000, 'Close handle was called', _objectSpread({
-          keepClosed: true
-        }, options));
+        w.close(1000, 'Close handle was called');
         currentListenKey = null;
       }
     };
@@ -688,8 +672,8 @@ var user = function user(opts, variator) {
           return keepAlive(false);
         }, 50e3);
         keepAlive(true);
-        return function (options) {
-          return closeStream(options);
+        return function () {
+          return closeStream(false);
         };
       }).catch(function (err) {
         if (isReconnecting) {
