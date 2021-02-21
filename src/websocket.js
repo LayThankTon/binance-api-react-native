@@ -238,7 +238,7 @@ const ticker = (payload, cb, transform = true, variator) => {
   })
 
   return () =>
-    cache.forEach(w => w.close(1000, 'Close handle was called'))
+  cache.forEach(w => w.close(1000, 'Close handle was called'))
 }
 
 const allTickers = (cb, transform = true, variator) => {
@@ -311,6 +311,47 @@ const aggTrades = (payload, cb, transform = true, variator) => {
 
   return () =>
     cache.forEach(w => w.close(1000, 'Close handle was called'))
+}
+
+const futuresLiqsTransform = m => ({
+  symbol: m.s,
+  price: m.p,
+  origQty: m.q,
+  lastFilledQty: m.l,
+  accumulatedQty: m.z,
+  averagePrice: m.ap,
+  status: m.X,
+  timeInForce: m.f,
+  type: m.o,
+  side: m.S,
+  time: m.T,
+})
+
+const futuresLiquidations = (payload, cb, transform = true) => {
+  const cache = (Array.isArray(payload) ? payload : [payload]).map(symbol => {
+    const w = openWebSocket(`${endpoints.futures}/${symbol.toLowerCase()}@forceOrder`)
+    w.onmessage = msg => {
+      const obj = JSON.parse(msg.data)
+
+      cb(transform ? futuresLiqsTransform(obj.o) : obj)
+    }
+
+    return w
+  })
+
+  return options =>
+    cache.forEach(w => w.close(1000, 'Close handle was called', { keepClosed: true, ...options }))
+}
+
+const futuresAllLiquidations = (cb, transform = true) => {
+  const w = new openWebSocket(`${endpoints.futures}/!forceOrder@arr`)
+
+  w.onmessage = msg => {
+    const obj = JSON.parse(msg.data)
+    cb(transform ? futuresLiqsTransform(obj.o) : obj)
+  }
+
+  return options => w.close(1000, 'Close handle was called', { keepClosed: true, ...options })
 }
 
 const tradesTransform = m => ({
@@ -437,23 +478,21 @@ const futuresUserTransforms = {
     transactionTime: m.T,
     eventType: 'ACCOUNT_UPDATE',
     eventReasonType: m.a.m,
-    balances: m.a.B.reduce((out, cur) => {
-      out[cur.a] = { asset: cur.a, walletBalance: cur.wb, crossWalletBalance: cur.cw }
-      return out
-    }, {}),
-    positions: m.a.P.reduce((out, cur) => {
-      out[cur.a] = {
-        symbol: cur.s,
-        positionAmount: cur.pa,
-        entryPrice: cur.ep,
-        accumulatedRealized: cur.cr,
-        unrealizedPnL: cur.up,
-        marginType: cur.mt,
-        isolatedWallet: cur.iw,
-        positionSide: cur.ps,
-      }
-      return out
-    }, {}),
+    balances: m.a.B.map(b => ({
+      asset: b.a,
+      walletBalance: b.wb,
+      crossWalletBalance: b.cw,
+    })),
+    positions: m.a.P.map(p => ({
+      symbol: p.s,
+      positionAmount: p.pa,
+      entryPrice: p.ep,
+      accumulatedRealized: p.cr,
+      unrealizedPnL: p.up,
+      marginType: p.mt,
+      isolatedWallet: p.iw,
+      positionSide: p.ps,
+    })),
   }),
   // https://binance-docs.github.io/apidocs/futures/en/#event-order-update
   ORDER_TRADE_UPDATE: m => ({
@@ -554,7 +593,7 @@ const user = (opts, variator) => (cb, transform) => {
       }
 
       w.close(1000, 'Close handle was called')
-      currentListenKey = null
+           currentListenKey = null
     }
   }
 
@@ -615,6 +654,8 @@ export default opts => {
     futuresTicker: (payload, cb, transform) => ticker(payload, cb, transform, 'futures'),
     futuresAllTickers: (cb, transform) => allTickers(cb, transform, 'futures'),
     futuresAggTrades: (payload, cb, transform) => aggTrades(payload, cb, transform, 'futures'),
+    futuresLiquidations,
+    futuresAllLiquidations,
     futuresUser: user(opts, 'futures'),
   }
 }

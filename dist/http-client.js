@@ -45,10 +45,11 @@ var makeQueryString = function makeQueryString(q) {
 
 
 var headersMapping = {
-  'x-mbx-used-weight-1m': 'usedWeigh1m',
+  'x-mbx-used-weight-1m': 'usedWeight1m',
   'x-mbx-order-count-10s': 'orderCount10s',
   'x-mbx-order-count-1m': 'orderCount1m',
   'x-mbx-order-count-1h': 'orderCount1h',
+  'x-mbx-order-count-1d': 'orderCount1d',
   'x-response-time': 'responseTime'
 };
 
@@ -446,6 +447,12 @@ var _default = function _default(opts) {
     assetDetail: function assetDetail(payload) {
       return privCall('/wapi/v3/assetDetail.html', payload);
     },
+    universalTransfer: function universalTransfer(payload) {
+      return privCall('/sapi/v1/asset/transfer', payload, 'POST');
+    },
+    universalTransferHistory: function universalTransferHistory(payload) {
+      return privCall('/sapi/v1/asset/transfer', payload);
+    },
     capitalConfigs: function capitalConfigs() {
       return privCall('/sapi/v1/capital/config/getall');
     },
@@ -502,6 +509,21 @@ var _default = function _default(opts) {
     },
     marginLoan: function marginLoan(payload) {
       return privCall('/sapi/v1/margin/loan', payload, 'POST');
+    },
+    marginIsolatedAccount: function marginIsolatedAccount(payload) {
+      return privCall('/sapi/v1/margin/isolated/account', payload);
+    },
+    marginMaxBorrow: function marginMaxBorrow(payload) {
+      return privCall('/sapi/v1/margin/maxBorrowable', payload);
+    },
+    marginCreateIsolated: function marginCreateIsolated(payload) {
+      return privCall('/sapi/v1/margin/isolated/create', payload, 'POST');
+    },
+    marginIsolatedTransfer: function marginIsolatedTransfer(payload) {
+      return privCall('/sapi/v1/margin/isolated/transfer', payload, 'POST');
+    },
+    marginIsolatedTransferHistory: function marginIsolatedTransferHistory(payload) {
+      return privCall('/sapi/v1/margin/isolated/transfer', payload);
     },
     futuresPing: function futuresPing() {
       return pubCall('/fapi/v1/ping').then(function () {

@@ -43,8 +43,10 @@ function _objectWithoutProperties(source, excluded) { if (source == null) return
 
 function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
 
-var BASE = 'wss://stream.binance.com:9443/ws';
-var FUTURES = 'wss://fstream.binance.com/ws';
+var endpoints = {
+  base: 'wss://stream.binance.com:9443/ws',
+  futures: 'wss://fstream.binance.com/ws'
+};
 
 var depthTransform = function depthTransform(m) {
   return {
@@ -84,7 +86,7 @@ var depth = function depth(payload, cb) {
   var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
   var variator = arguments.length > 3 ? arguments[3] : undefined;
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@depth"));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? endpoints.futures : endpoints.base, "/").concat(symbol.toLowerCase(), "@depth"));
 
     w.onmessage = function (msg) {
       var obj = JSON.parse(msg.data);
@@ -139,7 +141,7 @@ var partialDepth = function partialDepth(payload, cb) {
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (_ref) {
     var symbol = _ref.symbol,
         level = _ref.level;
-    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@depth").concat(level));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? endpoints.futures : endpoints.base, "/").concat(symbol.toLowerCase(), "@depth").concat(level));
 
     w.onmessage = function (msg) {
       var obj = JSON.parse(msg.data);
@@ -164,7 +166,7 @@ var candles = function candles(payload, interval, cb) {
   }
 
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@kline_").concat(interval));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? endpoints.futures : endpoints.base, "/").concat(symbol.toLowerCase(), "@kline_").concat(interval));
 
     w.onmessage = function (msg) {
       var obj = JSON.parse(msg.data);
@@ -273,7 +275,7 @@ var ticker = function ticker(payload, cb) {
   var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
   var variator = arguments.length > 3 ? arguments[3] : undefined;
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@ticker"));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? endpoints.futures : endpoints.base, "/").concat(symbol.toLowerCase(), "@ticker"));
 
     w.onmessage = function (msg) {
       var obj = JSON.parse(msg.data);
@@ -292,7 +294,7 @@ var ticker = function ticker(payload, cb) {
 var allTickers = function allTickers(cb) {
   var transform = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
   var variator = arguments.length > 2 ? arguments[2] : undefined;
-  var w = new _openWebsocket.default("".concat(variator === 'futures' ? FUTURES : BASE, "/!ticker@arr"));
+  var w = new _openWebsocket.default("".concat(variator === 'futures' ? endpoints.futures : endpoints.base, "/!ticker@arr"));
 
   w.onmessage = function (msg) {
     var arr = JSON.parse(msg.data);
@@ -343,7 +345,7 @@ var aggTrades = function aggTrades(payload, cb) {
   var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
   var variator = arguments.length > 3 ? arguments[3] : undefined;
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(symbol.toLowerCase(), "@aggTrade"));
+    var w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? endpoints.futures : endpoints.base, "/").concat(symbol.toLowerCase(), "@aggTrade"));
 
     w.onmessage = function (msg) {
       var obj = JSON.parse(msg.data);
@@ -378,7 +380,7 @@ var tradesTransform = function tradesTransform(m) {
 var trades = function trades(payload, cb) {
   var transform = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
   var cache = (Array.isArray(payload) ? payload : [payload]).map(function (symbol) {
-    var w = (0, _openWebsocket.default)("".concat(BASE, "/").concat(symbol.toLowerCase(), "@trade"));
+    var w = (0, _openWebsocket.default)("".concat(endpoints.base, "/").concat(symbol.toLowerCase(), "@trade"));
 
     w.onmessage = function (msg) {
       var obj = JSON.parse(msg.data);
@@ -661,7 +663,7 @@ var user = function user(opts, variator) {
     var makeStream = function makeStream(isReconnecting) {
       return getDataStream().then(function (_ref3) {
         var listenKey = _ref3.listenKey;
-        w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? FUTURES : BASE, "/").concat(listenKey));
+        w = (0, _openWebsocket.default)("".concat(variator === 'futures' ? endpoints.futures : endpoints.base, "/").concat(listenKey));
 
         w.onmessage = function (msg) {
           return userEventHandler(cb, transform, variator)(msg);
@@ -691,6 +693,14 @@ var user = function user(opts, variator) {
 };
 
 var _default = function _default(opts) {
+  if (opts && opts.wsBase) {
+    endpoints.base = opts.wsBase;
+  }
+
+  if (opts && opts.wsFutures) {
+    endpoints.futures = opts.wsFutures;
+  }
+
   return {
     depth: depth,
     partialDepth: partialDepth,
